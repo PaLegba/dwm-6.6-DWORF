@@ -451,8 +451,7 @@ Shaded titlebars use the normal titlebar colors from `SchemeNorm`; the selected 
 
 ### 5.1 Runtime themes (`-S`)
 
-`themes.h` contains color themes derived from the st color schemes in
-`ref/st-0.9.3-new-kitty/config.def.h`.
+`themes.h` contains color themes derived from the st color schemes.
 
 Launch syntax:
 
@@ -553,6 +552,11 @@ These are the main bugs that were fixed compared with the earlier in-work state.
   - use rotated `ext.width` / `ext.x` for thickness and horizontal centering
   - clip text to the available titlebar area
   - avoid placing text over buttons
+- Fixed an OpenBSD heap-corruption crash in `rotatedfont()` / `scaledfont()`:
+  `XftFontOpenPattern()` takes ownership of the `FcPattern`, so destroying the
+  pattern afterwards left the font with a dangling pointer. The later
+  `XftFontClose()` / `XftDrawDestroy()` aborted with `write to free mem` as soon
+  as the first client was managed. The pattern is now left to Xft.
 
 ### Titlebar interactions
 
@@ -632,6 +636,35 @@ cd dwm-6.6-DWORF
 make
 ```
 
+On OpenBSD, set the OpenBSD FreeType and man paths in `config.mk`. Install with:
+
+```sh
+make clean
+make install
+startx
+```
+
+The initial clean removes host-built dmenu objects that are tracked in the
+repository; otherwise `make install` could reuse the stale Linux `dmenu`
+binary.
+
+`make install` installs `/usr/local/bin/dwm` and a `dwm-6.6` symlink. It also
+builds and installs the bundled dmenu (`dmenu`, `dmenu_path`, `dmenu_run`,
+`stest`) only when `WITH_DMENU = yes` is set in `config.mk`; override with
+`make install WITH_DMENU=no`. Use `make install-dmenu` to install only dmenu,
+and `make dmenu` to build it without installing. The top-level target passes
+`PREFIX`, `MANPREFIX`, `DESTDIR`, and `FREETYPEINC` to the dmenu build, so the
+companion project does not need its own OpenBSD `config.mk` edits.
+
+The build system is portable between GNU make and BSD make (bmake). It uses
+GNU-style `include` (accepted by bmake for compatibility), `${SRC:.c=.o}`
+(AT&T `:old=new`), the `.c.o` suffix rule, and `.PHONY`; avoid `ifeq`/`.if` and
+other make-specific extensions. Both the dwm and dmenu Makefiles were verified
+with GNU make and OpenBSD make.
+
+`make dist` produces `dwm-6.6-DWORF.tar.gz` (`DISTNAME`) from the source tree,
+excluding objects and binaries. It does not run `clean` first.
+
 Run in Xephyr:
 
 ```sh
@@ -641,6 +674,11 @@ DISPLAY=:1 ./dwm-6.6 &
 ```
 
 The included `xephyr.sh` is a rough helper for this purpose.
+
+On the host, always use a dedicated `Xephyr` display (never the live `:0`) and
+terminate only the PIDs you started, including that `Xephyr`. Do not use
+`pkill`/`killall` and do not touch processes or sessions started by the
+operator.
 
 Useful checks:
 

@@ -73,13 +73,28 @@ make
 
 The resulting binary is `./dwm-6.6`.
 
+```sh
+make install
+```
+
+`make install` installs it as `/usr/local/bin/dwm` and creates a
+`/usr/local/bin/dwm-6.6` symlink. When `WITH_DMENU = yes` is set in `config.mk`
+(the default), it also builds and installs the companion dmenu (`dmenu`,
+`dmenu_path`, `dmenu_run`, `stest`); override with
+`make install WITH_DMENU=no`. Change `PREFIX` in `config.mk` if you use a
+different install prefix. To install only dmenu, run `make install-dmenu`.
+
+Both the top-level and dmenu Makefiles work with GNU make and BSD make
+(bmake), using the same commands on Linux and BSD.
+
 To install it manually:
 
 ```sh
 sudo install -m 755 dwm-6.6 /usr/local/bin/dwm
 ```
 
-Change `PREFIX` in `config.mk` if you use a different install prefix.
+On OpenBSD, set `FREETYPEINC = ${X11INC}/freetype2` and
+`MANPREFIX = ${PREFIX}/man` in `config.mk`.
 
 To rebuild after editing configuration or source:
 
@@ -270,6 +285,19 @@ Build it with:
 cd tools/dmenu-5.4-mod
 make
 ```
+
+Or build/install it from the top level:
+
+```sh
+make dmenu           # build only
+make install         # dwm + dmenu when WITH_DMENU = yes
+make install-dmenu   # dmenu only, unconditionally
+```
+
+`make install-dmenu` installs only the companion dmenu. On OpenBSD the
+top-level target passes the configured FreeType include, man, and install
+paths to the dmenu build, so the local dmenu `config.mk` does not need to be
+edited.
 
 Run examples:
 

@@ -1,6 +1,9 @@
 # dwm version
 VERSION = 6.6
 
+# Install the bundled companion dmenu with `make install` (yes/no)
+WITH_DMENU = yes
+
 # Customize below to fit your system
 
 # paths

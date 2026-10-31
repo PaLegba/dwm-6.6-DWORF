@@ -3296,7 +3296,6 @@ rotatedfont(Fnt *base, const char *text, int maxwidth)
 		FcPatternAddDouble(pattern, FC_PIXEL_SIZE, target);
 
 		font = XftFontOpenPattern(dpy, pattern);
-		FcPatternDestroy(pattern);
 		if (!font)
 			return NULL;
 		if (!len)
@@ -3338,7 +3337,6 @@ scaledfont(Fnt *base, int maxheight)
 	}
 
 	font = XftFontOpenPattern(dpy, pattern);
-	FcPatternDestroy(pattern);
 	return font;
 }
 

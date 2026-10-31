@@ -1,4 +1,4 @@
-/* Window-manager themes derived from the st color schemes in ref/. */
+/* Window-manager themes derived from the st color schemes. */
 #pragma once
 
 struct Theme {
