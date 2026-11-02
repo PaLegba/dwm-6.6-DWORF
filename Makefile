@@ -5,7 +5,7 @@ include config.mk
 
 SRC = drw.c dwm.c util.c
 OBJ = ${SRC:.c=.o}
-DISTNAME = dwm-${VERSION}-DWORF
+DISTNAME = dwm-dworf-V${DWORF_VERSION}
 DMENU_DIR = tools/dmenu-5.4-mod
 
 all: dwm-6.6

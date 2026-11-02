@@ -1,6 +1,9 @@
 # dwm version
 VERSION = 6.6
 
+# Project release version (tags/artifacts use dwm-dworf-V<version>)
+DWORF_VERSION = 1.0.1
+
 # Install the bundled companion dmenu with `make install` (yes/no)
 WITH_DMENU = yes
 

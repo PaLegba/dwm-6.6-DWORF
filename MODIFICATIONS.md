@@ -662,8 +662,9 @@ GNU-style `include` (accepted by bmake for compatibility), `${SRC:.c=.o}`
 other make-specific extensions. Both the dwm and dmenu Makefiles were verified
 with GNU make and OpenBSD make.
 
-`make dist` produces `dwm-6.6-DWORF.tar.gz` (`DISTNAME`) from the source tree,
-excluding objects and binaries. It does not run `clean` first.
+`make dist` produces `dwm-dworf-V<version>.tar.gz` (`DISTNAME`, currently
+`dwm-dworf-V1.0.1.tar.gz`) from the source tree, excluding objects and binaries.
+It does not run `clean` first.
 
 Run in Xephyr:
 
