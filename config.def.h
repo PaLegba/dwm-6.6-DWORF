@@ -17,7 +17,7 @@ static const unsigned int snap      = 32;       /* snap pixel */
 static const int showbar            = 1;        /* 0 means no bar */
 static const int topbar             = 1;        /* 0 means bottom bar */
 static const int extrabar           = 1;        /* 0 means no extra status bar */
-static const char *fonts[]          = { "terminus:size=10" };
+static const char *fonts[]          = { "monospace:size=10" };
 static const char dmenufont[]       = "monospace:size=10";
 
 /* cfact/mfact drag and wheel sensitivity */
@@ -35,29 +35,29 @@ static const float mfact_scroll_step  = 0.02;
 #include "themes.h"
 
 /* default colors; overridden by -S theme */
-static const char normbordercolor[] = "#333333";
-static const char normbgcolor[]     = "#333333";
+static const char normbordercolor[] = "#101F00";
+static const char normbgcolor[]     = "#00101F";
 static const char normfgcolor[]     = "#00F0FF";
 static const char selbordercolor[]  = "#00F0FF";
 static const char selbgcolor[]      = "#00F0FF";
-static const char selfgcolor[]      = "#222222";
-static const char urgbordercolor[]  = "#FF0000";
+static const char selfgcolor[]      = "#00101F";
+static const char urgbordercolor[]  = "#A00000";
 
 /* reserved for floating-window border colors; currently unused */
-static const char *floatnormbordercolor = "#C03500";
-static const char *floatselbordercolor  = "#E08500";
+static const char *floatnormbordercolor = "#E08500";
+static const char *floatselbordercolor  = "#F0F000";
 
 /* titlebar button colors; overridden by -S theme */
-static const char *titlebarclosecolor   = "#bf616a";
-static const char *titlebarpluscolor    = "#61bf6a";
-static const char *titlebarbtnfgcolor   = "#eceff4";
+static const char *titlebarclosecolor   = "#A00000";
+static const char *titlebarpluscolor    = "#00501F";
+static const char *titlebarbtnfgcolor   = "#FFFFFF";
 
 /* fallback dmenu colors when no -S theme is passed */
-static const char col_gray1[]       = "#222222";
-static const char col_gray2[]       = "#444444";
-static const char col_gray3[]       = "#bbbbbb";
-static const char col_gray4[]       = "#eeeeee";
-static const char col_cyan[]        = "#005577";
+static const char col_gray1[]       = "#00101F";
+static const char col_gray2[]       = "#101F00";
+static const char col_gray3[]       = "#00F0FF";
+static const char col_gray4[]       = "#00101F";
+static const char col_cyan[]        = "#00F0FF";
 
 static const char *colors[][3] = {
 	/*               fg           bg           border   */
@@ -176,6 +176,7 @@ static const Key keys[] = {
 	/* one-left-hand controls */
 	{ MODKEY|ShiftMask,             XK_z,      zoom,           {0} },
 	{ MODKEY|ShiftMask,             XK_q,      spawn,          {.v = termcmd } },
+	{ MODKEY|ControlMask,           XK_q,      quit,           {0} },
 	{ MODKEY|ShiftMask,             XK_e,      spawn,          {.v = dmenucmd } },
 	{ MODKEY|ShiftMask,             XK_w,      focusstack,     {.i = -1 } },
 	{ MODKEY|ShiftMask,             XK_s,      focusstack,     {.i = +1 } },

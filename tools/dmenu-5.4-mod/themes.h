@@ -1,4 +1,4 @@
-/* Window-manager themes derived from the st color schemes. */
+/* Window-manager themes derived from the st and svkbd color schemes. */
 #pragma once
 
 struct Theme {
@@ -10,7 +10,8 @@ struct Theme {
 };
 
 static const struct Theme themes[] = {
-	{ "default", { "#000000", "#FF0000", "#00FF00", "#FFFF00", "#0000FF", "#FF00FF", "#00FFFF", "#FFFFFF", "#808080", "#FF0000", "#00FF00", "#FFFF00", "#0000FF", "#FF00FF", "#00FFFF", "#FFFFFF" }, "#FFFFFF", "#000000", "#FFFFFF" },
+	{ "default", { "#0F0F0F", "#A00000", "#00501F", "#E08500", "#000060", "#802500", "#0090FF", "#E0E0E0", "#101F00", "#F03030", "#00F01F", "#F0F000", "#0090FF", "#802500", "#00F0FF", "#FFFFFF" }, "#00F0FF", "#00101F", "#00F0FF" },
+	{ "ansi", { "#000000", "#FF0000", "#00FF00", "#FFFF00", "#0000FF", "#FF00FF", "#00FFFF", "#FFFFFF", "#808080", "#FF0000", "#00FF00", "#FFFF00", "#0000FF", "#FF00FF", "#00FFFF", "#FFFFFF" }, "#FFFFFF", "#000000", "#FFFFFF" },
 	{ "dracula", { "#282a36", "#ff5555", "#50fa7b", "#f1fa8c", "#bd93f9", "#ff79c6", "#8be9fd", "#bbbbbb", "#6272a4", "#ff6e6e", "#69ff94", "#ffffa5", "#d6acff", "#ff92df", "#a4ffff", "#ffffff" }, "#f8f8f2", "#282a36", "#f8f8f2" },
 	{ "solarized", { "#002b36", "#dc322f", "#859900", "#b58900", "#268bd2", "#6c71c4", "#2aa198", "#93a1a1", "#657b83", "#dc322f", "#859900", "#b58900", "#268bd2", "#6c71c4", "#2aa198", "#fdf6e3" }, "#839496", "#002b36", "#839496" },
 	{ "nord", { "#3b4252", "#bf616a", "#a3be8c", "#ebcb8b", "#81a1c1", "#b48ead", "#88c0d0", "#e5e9f0", "#4c566a", "#bf616a", "#a3be8c", "#ebcb8b", "#81a1c1", "#b48ead", "#8fbcbb", "#eceff4" }, "#d8dee9", "#2e3440", "#d8dee9" },

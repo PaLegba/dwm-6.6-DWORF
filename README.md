@@ -18,6 +18,7 @@ DWORF is designed to be used as a primary desktop environment, not only as a dem
 - **Double-click shading** — collapse a window to a titlebar and restore it later.
 - **`cfact` / `mfact` control** — fine-grained per-window and master-area sizing.
 - **Runtime themes** — all st color schemes from the bundled reference are available with `-S`.
+- **Universal font** — dwm, dmenu, and the companion svkbd share the `monospace` family through Xft; Cyrillic labels work without core-font setup.
 - **Per-tag layouts** — layout, master count, `mfact`, and bar visibility are stored per tag.
 - **Per-window keyboard layout** — each window remembers its XKB group.
 - **Fullscreen without artifacts** — fullscreen clients cover the whole monitor and bypass the side titlebar.
@@ -127,9 +128,13 @@ A theme name is also passed automatically to the configured terminal (`st`) and 
 
 ## Themes
 
-Themes live in `themes.h` and come from the st color schemes in the bundled reference:
+Themes live in `themes.h` and come from the st/svkbd color schemes. The
+`default` theme is the svkbd-pad palette; the previous ANSI palette is
+available as `ansi`.
 
-`default`, `dracula`, `solarized`, `nord`, `gruvbox`, `plan9`, `cyberpunk`, `light`, `ork`, `ledg`, `ledb`, `ledr`, `ledw`, `ledy`, `leda`, `ledc`, `ledmg`.
+`default`, `ansi`, `dracula`, `solarized`, `nord`, `gruvbox`, `plan9`,
+`cyberpunk`, `light`, `ork`, `ledg`, `ledb`, `ledr`, `ledw`, `ledy`, `leda`,
+`ledc`, `ledmg`.
 
 ```sh
 dwm -S ork

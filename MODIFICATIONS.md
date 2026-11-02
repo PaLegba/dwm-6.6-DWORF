@@ -1,7 +1,7 @@
 # dwm-6.6-DWORF — Project Modifications
 
 
-Last updated: 2026-10-26
+Last updated: 2026-11-02
 
 This document describes the current state of `dwm-6.6-DWORF`, which is a heavily modified fork of dwm 6.6. It is intended for humans who need to understand what changed, what was fixed, and where the current limitations are.
 
@@ -27,6 +27,7 @@ Main additions:
 - Always-center placement for floating windows, with monitor-bounds clamping.
 - Per-tag layouts, `nmaster`, `mfact`, and bar visibility.
 - Per-window keyboard layout/group memory (`pwkl`).
+- Universal Xft `monospace` default font shared with the companion dmenu and svkbd.
 - Fullscreen windows cover the whole monitor without a residual titlebar.
 - Optional extra status bar on the primary monitor (`dualstatus`).
 - `zoomswap` behavior for `zoom`.
@@ -451,7 +452,10 @@ Shaded titlebars use the normal titlebar colors from `SchemeNorm`; the selected 
 
 ### 5.1 Runtime themes (`-S`)
 
-`themes.h` contains color themes derived from the st color schemes.
+`themes.h` contains color themes derived from the st/svkbd color schemes.
+The `default` theme is the svkbd-pad palette; the previous ANSI palette is
+available as `ansi`. The bundled svkbd has its own `themes.h` with the same
+names and a `-S` option, and uses the svkbd palette as its default.
 
 Launch syntax:
 
@@ -466,6 +470,7 @@ If the requested theme name is unknown, dwm prints a warning, switches to the
 Available theme names:
 
 - `default`
+- `ansi`
 - `dracula`
 - `solarized`
 - `nord`
@@ -496,7 +501,11 @@ normally and the theme flag is appended after them. It keeps st and dmenu
 visually consistent with the running dwm theme.
 
 The theme system only overrides colors, not fonts, gaps, titlebar width,
-layouts, or keybindings.
+layouts, or keybindings. The default font is not theme-controlled: dwm and
+dmenu use `monospace:size=10`, and the companion svkbd uses
+`monospace:size=14`, all through Xft/Fontconfig. svkbd previously used an
+XFontSet core font; it now draws with Xft (`XftDrawStringUtf8`), so Cyrillic
+labels work without installing core fonts.
 
 ### 5.2 Extra status bar (`dualstatus`)
 

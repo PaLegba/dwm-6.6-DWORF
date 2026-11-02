@@ -186,7 +186,7 @@ drawhighlights(struct item *item, int x, int y, int maxw)
 	int indentx, highlightlen;
 
 	drw_setscheme(drw, scheme[item == sel ? SchemeSelHighlight : item->out ? SchemeOutHighlight : SchemeNormHighlight]);
-	strcpy(tokens, text);
+	snprintf(tokens, sizeof tokens, "%s", text);
 	for (token = strtok(tokens, " "); token; token = strtok(NULL, " ")) {
 		highlight = fstrstr(item->text, token);
 		while (highlight) {
@@ -335,7 +335,7 @@ match(void)
 	size_t len, textsize;
 	struct item *item, *lprefix, *lsubstr, *prefixend, *substrend;
 
-	strcpy(buf, text);
+	snprintf(buf, sizeof buf, "%s", text);
 	/* separate input text into tokens to be matched individually */
 	for (s = strtok(buf, " "); s; tokv[tokc - 1] = s, s = strtok(NULL, " "))
 		if (++tokc > tokn && !(tokv = realloc(tokv, ++tokn * sizeof *tokv)))
