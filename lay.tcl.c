@@ -30,6 +30,7 @@ tcl(Monitor *m)
 	}
 
 	sw = (m->ww - mw) / 2;
+	/* layout x is root-relative: always include m->wx */
 	resize(cl[0], m->wx + sw, m->wy, mw - 2 * cl[0]->bw,
 		m->wh - 2 * cl[0]->bw, False);
 

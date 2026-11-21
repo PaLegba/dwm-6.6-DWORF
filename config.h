@@ -38,6 +38,10 @@ static const char urgbordercolor[]  = "#FF0000";
 static const char *titlebarclosecolor   = "#bf616a";
 static const char *titlebarpluscolor    = "#61bf6a";
 static const char *titlebarbtnfgcolor   = "#eceff4";
+/* titlebar background pattern: 0=solid, 1=sparse dots */
+static const int titlebar_pattern = 1;
+/* empty space around the title text, in pixels */
+static const int titlebar_textpad = 4;
 ///////////////////////////////////////////////////////////
 static const char col_gray1[]       = "#222222";
 static const char col_gray2[]       = "#444444";
