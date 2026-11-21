@@ -520,16 +520,21 @@ Available theme names:
 - `light`
 - `ork`
 - `ledg`, `ledb`, `ledr`, `ledw`, `ledy`, `leda`, `ledc`, `ledmg`
+- `megarhyssa` (experimental warm-copper palette)
 
 Theme mapping used by `applytheme()`:
 
 - normal fg/bg: theme `defaultfg` / `defaultbg`
 - normal border: theme bright black (`color[8]`)
-- selected fg/bg/border: theme background / cursor color / cursor color
+- inactive titlebar fg/bg: optional `titlenormfg` / `titlenormbg`, otherwise normal scheme
+- selected fg/bg: theme background / cursor color
+- selected border: optional `selborder`, otherwise cursor color
 - urgent border: theme red (`color[1]`)
-- close button: theme red (`color[1]`)
-- `[o]` button: theme green (`color[2]`)
-- button glyphs: theme bright white (`color[15]`)
+- close button glyph: optional `closefg`, otherwise theme red (`color[1]`)
+- `[o]` button glyph: optional `plusfg`, otherwise theme green (`color[2]`)
+- active button background: optional `btnbg`, otherwise the legacy per-button colors
+- other button glyphs: theme bright white (`color[15]`)
+- button outline: `titlebarbtnbordercolor` (`#000000` by default)
 - floating border colors: theme yellow / bright yellow (`color[3]` / `color[11]`)
 
 The selected theme name is remembered in the global `themename` and is appended as
@@ -760,6 +765,45 @@ Smoke-test checklist:
 - on multiple monitors, update a background window title and verify its titlebar stays normal-colored
 - terminate dwm with `SIGTERM`; verify clients are released to root
 - restart after `kill -9`; verify stale frames are cleaned and clients are adopted
+
+### 9.1 Slit host (`tools/dwslit`)
+
+`tools/dwslit` is a standalone classic Slit host. dwm-dworf-dock treats classic
+dockapps specially in `isdockapp()`:
+
+- `WM_HINTS.initial_state == WithdrawnState`, or
+- `WM_CLASS` class `DockApp`.
+
+Such windows are not managed or framed by dwm; `maprequest()` maps them and
+`scan()` skips them. `dwslit` watches the root window, adopts those dockapps,
+uses `WM_HINTS.icon_window` when present, reparents them into its dock strip,
+and lays them out vertically or horizontally based on the slit geometry.
+`dwslit` is itself a `_NET_WM_WINDOW_TYPE_DOCK` client, so dwm reserves its
+edge. Docks are assigned to the monitor under their geometry (`recttomon`) even
+for new map requests, so a slit placed on a secondary monitor stays there.
+Without `-g`, it places itself at the right edge of the monitor under the
+pointer (Xinerama aware) and dwm stretches it to the work-area height.
+Start `dwslit` before dockapps, or later to pick up existing root windows.
+Closing `dwslit` reparents its clients back to root; dwm continues to leave
+them unmanaged so a new slit can adopt them.
+
+Manual test:
+
+```sh
+cd tools/dwslit && make
+DISPLAY=:1 ./dwslit -g 64x300+0+0 &
+# start a classic dockapp, or a test window with WM_HINTS WithdrawnState
+DISPLAY=:1 xwininfo -root -tree
+```
+
+`tools/dwslit/wmapps/` contains the working classic dockapp set
+(`wmfire`, `wmfirew`, `wmitime`, `wmtime`, `wmtimer`, `wmmatrix`,
+`wmmoonclock`, `wmsun`, `wmglobe`). Build them with
+`make -C tools/dwslit/wmapps`; binaries go to `wmapps/bin/`. `wmglobe` uses a
+minimal local WRaster shim plus `tools/stb/stb_image.h` instead of libwraster
+and its image-library dependencies. Apps that did not render or needed
+extra/obsolete dependencies were moved out of the bundled set and kept for
+future repair work.
 
 ---
 

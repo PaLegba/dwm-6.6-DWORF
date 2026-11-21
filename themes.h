@@ -7,6 +7,12 @@ struct Theme {
 	const char *fg;
 	const char *bg;
 	const char *cursor;
+	const char *selborder;
+	const char *btnbg;
+	const char *closefg;
+	const char *plusfg;
+	const char *titlenormbg;
+	const char *titlenormfg;
 };
 
 static const struct Theme themes[] = {
@@ -28,5 +34,6 @@ static const struct Theme themes[] = {
 	{ "leda", { "#000000", "#110D00", "#221900", "#332600", "#443300", "#554000", "#664C00", "#775900", "#886600", "#997300", "#AA7F00", "#BB8C00", "#CC9900", "#DDA600", "#EEB200", "#FFBF00" }, "#FFBF00", "#000000", "#FFBF00" },
 	{ "ledc", { "#000000", "#001111", "#002222", "#003333", "#004444", "#005555", "#006666", "#007777", "#008888", "#009999", "#00AAAA", "#00BBBB", "#00CCCC", "#00DDDD", "#00EEEE", "#00FFFF" }, "#00FFFF", "#000000", "#00FFFF" },
 	{ "ledmg", { "#000000", "#110011", "#220022", "#330033", "#440044", "#550055", "#660066", "#770077", "#880088", "#990099", "#AA00AA", "#BB00BB", "#CC00CC", "#DD00DD", "#EE00EE", "#FF00FF" }, "#FF00FF", "#000000", "#FF00FF" },
+	{ "megarhyssa", { "#22201E", "#8C2318", "#A68A3A", "#E5A922", "#5E6B6F", "#B84A14", "#C9B98A", "#F2E4B7", "#8C8278", "#D96B18", "#C6A84A", "#F0C24A", "#8A9A98", "#E58A4A", "#E2D3A6", "#FFF3D0" }, "#F2E4B7", "#22201E", "#D96B18", "#8C8278", "#F0C24A", "#1C1714", "#1C1714", "#8C8278", "#1C1714" },
 	{ NULL, { 0 }, NULL, NULL, NULL }
 };

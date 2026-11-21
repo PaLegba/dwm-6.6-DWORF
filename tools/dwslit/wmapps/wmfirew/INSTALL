@@ -1,0 +1,15 @@
+How to install wmflame ?
+
+1) tar -xvzf wmfirew-*.tar.gz
+2) cd wmfirew.app/wmfirew
+3) make
+4) (become root)
+5) make install
+6) (leave root)
+7) wmfirew &
+or
+8) (in afterstep) add the following line to your "wharf" file:
+
+*Wharf wmfirew - Swallow "wmfirew" wmfirew &
+
+

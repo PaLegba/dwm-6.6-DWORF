@@ -206,6 +206,8 @@ static void drawframe(Client *c, int wintype);
 static void drawshadeframe(Client *c);
 static void drawtitlebg(Client *c, unsigned int sidx, int w, int h);
 static void drawtitleplate(Client *c, unsigned int sidx, int x, int y, int w, int h);
+static Clr *titlebg(unsigned int sidx);
+static Clr *titlefg(unsigned int sidx);
 static XftFont *rotatedfont(Fnt *base, const char *text, int maxwidth);
 static XftFont *scaledfont(Fnt *base, int maxheight);
 static void enternotify(XEvent *e);
@@ -252,6 +254,7 @@ static void run(void);
 static void scan(void);
 static void cleanupstale(void);
 static int hasprop(Window w, Atom a);
+static int isdockapp(Window w);
 static int sendevent(Client *c, Atom proto);
 static void sendmon(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
@@ -329,7 +332,12 @@ static int scanning = 0;
 static int sigpipe[2] = { -1, -1 };
 static Cur *cursor[CurLast];
 static Clr **scheme;
-static Clr btncloseclr, btnplusclr, btnfgclr;
+static Clr btncloseclr, btnplusclr, btnfgclr, btnbgclr, btnborderclr;
+static int hasbtnbgclr;
+static Clr titlenormbgclr, titlenormfgclr;
+static int hastitlenormbg, hastitlenormfg;
+static const char *titlenormbgcolor = NULL;
+static const char *titlenormfgcolor = NULL;
 static Display *dpy;
 static Drw *drw;
 static Monitor *mons, *selmon;
@@ -832,6 +840,13 @@ cleanup(void)
 	XftColorFree(dpy, DefaultVisual(dpy, screen), DefaultColormap(dpy, screen), &btncloseclr);
 	XftColorFree(dpy, DefaultVisual(dpy, screen), DefaultColormap(dpy, screen), &btnplusclr);
 	XftColorFree(dpy, DefaultVisual(dpy, screen), DefaultColormap(dpy, screen), &btnfgclr);
+	XftColorFree(dpy, DefaultVisual(dpy, screen), DefaultColormap(dpy, screen), &btnborderclr);
+	if (hasbtnbgclr)
+		XftColorFree(dpy, DefaultVisual(dpy, screen), DefaultColormap(dpy, screen), &btnbgclr);
+	if (hastitlenormbg)
+		XftColorFree(dpy, DefaultVisual(dpy, screen), DefaultColormap(dpy, screen), &titlenormbgclr);
+	if (hastitlenormfg)
+		XftColorFree(dpy, DefaultVisual(dpy, screen), DefaultColormap(dpy, screen), &titlenormfgclr);
 	if (titlebar_stipple != None)
 		XFreePixmap(dpy, titlebar_stipple);
 	XFreeGC(dpy, frame_gc);
@@ -1571,7 +1586,7 @@ manage(Window w, XWindowAttributes *wa)
                 c->mon = t->mon;
                 c->tags = t->tags;
         } else {
-                c->mon = (scanning && permonitorcatch)
+                c->mon = (ISDOCK(c) || (scanning && permonitorcatch))
                         ? recttomon(wa->x, wa->y, wa->width, wa->height)
                         : selmon;
                 applyrules(c);
@@ -1740,6 +1755,10 @@ maprequest(XEvent *e)
 		/* already managed: map the real client unless it is shaded */
 		if (ev->window == c->client && !c->isshaded)
 			XMapWindow(dpy, c->client);
+		return;
+	}
+	if (isdockapp(ev->window)) {
+		XMapWindow(dpy, ev->window);
 		return;
 	}
 	manage(ev->window, &wa);
@@ -2220,6 +2239,30 @@ hasprop(Window w, Atom a)
         return n > 0;
 }
 
+int
+isdockapp(Window w)
+{
+        XWMHints *h;
+        XClassHint ch = { NULL, NULL };
+        int found = 0;
+
+        if ((h = XGetWMHints(dpy, w))) {
+                if ((h->flags & StateHint) &&
+                    h->initial_state == WithdrawnState)
+                        found = 1;
+                XFree(h);
+        }
+        if (!found && XGetClassHint(dpy, w, &ch)) {
+                if (ch.res_class && !strcmp(ch.res_class, "DockApp"))
+                        found = 1;
+                if (ch.res_name)
+                        XFree(ch.res_name);
+                if (ch.res_class)
+                        XFree(ch.res_class);
+        }
+        return found;
+}
+
 /* Release clients trapped in frames left behind by a previous dwm. */
 void
 cleanupstale(void)
@@ -2294,6 +2337,8 @@ scan(void)
                 /* do not adopt our own (possibly stale) frames */
                 if (wintoclient(wins[i]))
                         continue;
+                if (isdockapp(wins[i]))
+                        continue;
                 if (!XGetTransientForHint(dpy, wins[i], &d1))
                         manage(wins[i], &wa);
         }
@@ -2303,6 +2348,8 @@ scan(void)
                 if (!XGetWindowAttributes(dpy, wins[i], &wa) || wa.override_redirect)
                         continue;
                 if (wintoclient(wins[i]))
+                        continue;
+                if (isdockapp(wins[i]))
                         continue;
                 if (XGetTransientForHint(dpy, wins[i], &d1)
                 && (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
@@ -2532,15 +2579,21 @@ applytheme(const char *name)
 
 	colors[SchemeSel][ColFg] = themes[i].bg;
 	colors[SchemeSel][ColBg] = themes[i].cursor;
-	colors[SchemeSel][ColBorder] = themes[i].cursor;
+	colors[SchemeSel][ColBorder] = themes[i].selborder
+		? themes[i].selborder : themes[i].cursor;
 
 	colors[SchemeUrg][ColFg] = themes[i].bg;
 	colors[SchemeUrg][ColBg] = themes[i].cursor;
 	colors[SchemeUrg][ColBorder] = themes[i].color[1];
 
-	titlebarclosecolor = themes[i].color[1];
-	titlebarpluscolor = themes[i].color[2];
+	titlebarclosecolor = themes[i].closefg
+		? themes[i].closefg : themes[i].color[1];
+	titlebarpluscolor = themes[i].plusfg
+		? themes[i].plusfg : themes[i].color[2];
 	titlebarbtnfgcolor = themes[i].color[15];
+	titlebarbtnbgcolor = themes[i].btnbg;
+	titlenormbgcolor = themes[i].titlenormbg;
+	titlenormfgcolor = themes[i].titlenormfg;
 
 	floatnormbordercolor = themes[i].color[3];
 	floatselbordercolor = themes[i].color[11];
@@ -2619,6 +2672,16 @@ if (titlebar_stipple != None) {
 	drw_clr_create(drw, &btncloseclr, titlebarclosecolor);
 	drw_clr_create(drw, &btnplusclr, titlebarpluscolor);
 	drw_clr_create(drw, &btnfgclr, titlebarbtnfgcolor);
+	drw_clr_create(drw, &btnborderclr, titlebarbtnbordercolor);
+	hasbtnbgclr = titlebarbtnbgcolor != NULL;
+	if (hasbtnbgclr)
+		drw_clr_create(drw, &btnbgclr, titlebarbtnbgcolor);
+	hastitlenormbg = titlenormbgcolor != NULL;
+	if (hastitlenormbg)
+		drw_clr_create(drw, &titlenormbgclr, titlenormbgcolor);
+	hastitlenormfg = titlenormfgcolor != NULL;
+	if (hastitlenormfg)
+		drw_clr_create(drw, &titlenormfgclr, titlenormfgcolor);
 	/* init bars */
 	updatebars();
 	updatestatus();
@@ -3652,14 +3715,33 @@ scaledfont(Fnt *base, int maxheight)
 	return font;
 }
 
+Clr *
+titlebg(unsigned int sidx)
+{
+	if (sidx == SchemeNorm && hastitlenormbg)
+		return &titlenormbgclr;
+	return &scheme[sidx][ColBg];
+}
+
+Clr *
+titlefg(unsigned int sidx)
+{
+	if (sidx == SchemeNorm && hastitlenormfg)
+		return &titlenormfgclr;
+	return &scheme[sidx][ColFg];
+}
+
 void
 drawtitlebg(Client *c, unsigned int sidx, int w, int h)
 {
-	XSetForeground(dpy, frame_gc, scheme[sidx][ColBg].pixel);
+	Clr *bg = titlebg(sidx);
+	Clr *fg = titlefg(sidx);
+
+	XSetForeground(dpy, frame_gc, bg->pixel);
 	XFillRectangle(dpy, c->win, frame_gc, 0, 0, w, h);
 	if (titlebar_stipple == None)
 		return;
-	XSetForeground(dpy, frame_gc, scheme[sidx][ColFg].pixel);
+	XSetForeground(dpy, frame_gc, fg->pixel);
 	XSetFillStyle(dpy, frame_gc, FillStippled);
 	XFillRectangle(dpy, c->win, frame_gc, 0, 0, w, h);
 	XSetFillStyle(dpy, frame_gc, FillSolid);
@@ -3670,7 +3752,7 @@ drawtitleplate(Client *c, unsigned int sidx, int x, int y, int w, int h)
 {
 	if (w <= 0 || h <= 0)
 		return;
-	XSetForeground(dpy, frame_gc, scheme[sidx][ColBg].pixel);
+	XSetForeground(dpy, frame_gc, titlebg(sidx)->pixel);
 	XFillRectangle(dpy, c->win, frame_gc, x, y, w, h);
 }
 
@@ -3692,6 +3774,8 @@ drawshadeframe(Client *c)
 		bs = 1;
 	XSetForeground(dpy, frame_gc, scheme[SchemeNorm][ColBg].pixel);
 	XFillRectangle(dpy, c->win, frame_gc, 0, 0, bs, bs);
+	XSetForeground(dpy, frame_gc, btnborderclr.pixel);
+	XDrawRectangle(dpy, c->win, frame_gc, 0, 0, bs - 1, bs - 1);
 	XSetForeground(dpy, frame_gc, scheme[SchemeNorm][ColFg].pixel);
 	if (bs > 6) {
 		int m = MAX(2, bs / 5);
@@ -3701,7 +3785,7 @@ drawshadeframe(Client *c)
 
 	if (c->name[0] == '\0' || !drw || !drw->fonts || !drw->fonts->xfont)
 		return;
-	color = &scheme[SchemeNorm][ColFg];
+	color = titlefg(SchemeNorm);
 	draw = XftDrawCreate(dpy, c->win, DefaultVisual(dpy, screen),
 		DefaultColormap(dpy, screen));
 	if (!draw)
@@ -3778,6 +3862,7 @@ drawframe(Client *c, int wintype)
 	XGlyphInfo ext;
 	int pen_x, pen_y, text_h;
 	int active;
+	int custombtn;
 	int ty, tb;
 
 	if (ISFRAMELESS(c))
@@ -3791,16 +3876,21 @@ drawframe(Client *c, int wintype)
 
 	sidx = c->isurgent ? SchemeUrg : (wintype == 1 ? SchemeSel : SchemeNorm);
 	active = wintype == 1;
+	custombtn = active && hasbtnbgclr;
 
 	/* background */
 	drawtitlebg(c, sidx, titlebar_width, c->h);
 
 	/* close button: the whole titlebar width, at the top */
 	XSetForeground(dpy, frame_gc,
-		active ? btncloseclr.pixel : scheme[sidx][ColBg].pixel);
+		custombtn ? btnbgclr.pixel
+		: active ? btncloseclr.pixel : scheme[sidx][ColBg].pixel);
 	XFillRectangle(dpy, c->win, frame_gc, 0, 0, btn_size, btn_size);
+	XSetForeground(dpy, frame_gc, btnborderclr.pixel);
+	XDrawRectangle(dpy, c->win, frame_gc, 0, 0, btn_size - 1, btn_size - 1);
 	XSetForeground(dpy, frame_gc,
-		active ? btnfgclr.pixel : scheme[sidx][ColFg].pixel);
+		custombtn ? btncloseclr.pixel
+		: active ? btnfgclr.pixel : scheme[sidx][ColFg].pixel);
 	{
 		int m = MAX(2, btn_size / 5);
 		XDrawLine(dpy, c->win, frame_gc, m, m, btn_size - m - 1, btn_size - m - 1);
@@ -3816,10 +3906,15 @@ drawframe(Client *c, int wintype)
 		int r = MAX(2, btn_size / 3);
 
 		XSetForeground(dpy, frame_gc,
-			active ? btnplusclr.pixel : scheme[sidx][ColBg].pixel);
+			custombtn ? btnbgclr.pixel
+			: active ? btnplusclr.pixel : scheme[sidx][ColBg].pixel);
 		XFillRectangle(dpy, c->win, frame_gc, 0, button_y, btn_size, btn_size);
+		XSetForeground(dpy, frame_gc, btnborderclr.pixel);
+		XDrawRectangle(dpy, c->win, frame_gc, 0, button_y,
+			btn_size - 1, btn_size - 1);
 		XSetForeground(dpy, frame_gc,
-			active ? btnfgclr.pixel : scheme[sidx][ColFg].pixel);
+			custombtn ? btnplusclr.pixel
+			: active ? btnfgclr.pixel : scheme[sidx][ColFg].pixel);
 		XDrawArc(dpy, c->win, frame_gc, cx - r, cy - r,
 			2 * r, 2 * r, 0, 360 * 64);
 	}
@@ -3838,7 +3933,7 @@ drawframe(Client *c, int wintype)
 		return;
 	}
 
-	xftcolor = &scheme[sidx][ColFg];
+	xftcolor = titlefg(sidx);
 
 	/*
 	 * With the rotated font XGlyphInfo is rotated too:

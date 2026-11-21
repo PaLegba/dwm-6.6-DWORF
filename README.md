@@ -27,6 +27,7 @@ DWORF is designed to be used as a primary desktop environment, not only as a dem
 - **Dual status bars** — optional second status bar on the primary monitor.
 - **Gaps, urgently colored borders, floating windows clamped to their monitor at rest but draggable across monitors**, and other usability improvements.
 - **Companion dmenu** in `tools/dmenu-5.4-mod` with themes, highlighting, mouse support, scrolling, separators, and non-blocking stdin.
+- **Classic Slit** in `tools/dwslit` for legacy dockapps (`WM_HINTS` WithdrawnState / `WM_CLASS` `DockApp`).
 
 ---
 
@@ -136,7 +137,7 @@ available as `ansi`.
 
 `default`, `ansi`, `dracula`, `solarized`, `nord`, `gruvbox`, `plan9`,
 `cyberpunk`, `light`, `ork`, `ledg`, `ledb`, `ledr`, `ledw`, `ledy`, `leda`,
-`ledc`, `ledmg`.
+`ledc`, `ledmg`, `megarhyssa` (experimental warm-copper theme).
 
 ```sh
 dwm -S ork
@@ -282,6 +283,30 @@ Each window also remembers its XKB keyboard group. Switching focus restores the 
 
 ---
 
+## Slit (`dwslit`)
+
+`tools/dwslit` is a classic `*box`-style Slit host for legacy dockapps. It is a
+normal `_NET_WM_WINDOW_TYPE_DOCK` client, so dwm reserves an edge and keeps it
+out of tiling/focus. dwm leaves classic dockapps
+(`WM_HINTS.initial_state == WithdrawnState` or `WM_CLASS` class `DockApp`)
+unmanaged and maps them; `dwslit` reparents them into its strip. Start
+`dwslit` before launching dockapps, or start it later to pick up existing root
+windows.
+
+```sh
+cd tools/dwslit
+make
+./dwslit                    # right edge of the monitor under the pointer
+./dwslit -g 600x64+0+0      # horizontal top row
+
+make wmapps
+./wmapps/bin/wmtime        # bundled example dockapp
+```
+
+See `tools/dwslit/README.md` and `tools/dwslit/wmapps/README.md`.
+
+---
+
 ## Companion dmenu
 
 `tools/dmenu-5.4-mod` is a modified dmenu build with:
@@ -335,6 +360,7 @@ Configuration is compile-time, in dwm tradition.
 - `permonitorcatch` in `config.h` keeps adopted windows on their current monitor during the startup scan; set it to `0` for classic dwm behavior.
 - `titlebar_pattern` in `config.h` selects the titlebar texture: `0` solid, `1` sparse dots.
 - `titlebar_textpad` in `config.h` sets the solid padding around the title text (default 4 px).
+- `titlebarbtnbordercolor` in `config.h` sets the button outline color (default `#000000`).
 - After editing configuration, rebuild with `make clean && make`.
 
 The authoritative documentation for behavior and internals is in `MODIFICATIONS.md`. The man page is `dwm.1`.
@@ -380,6 +406,7 @@ The companion dmenu and the reference st build can also be started on the same d
 - `tilemovemouse.c` — tiled drag/reorder logic
 - `nextprevlayout.c` — layout cycling
 - `tools/dmenu-5.4-mod/` — companion dmenu
+- `tools/dwslit/` — classic dockapp Slit host
 - `MODIFICATIONS.md` — detailed technical change log and architecture notes
 
 ---

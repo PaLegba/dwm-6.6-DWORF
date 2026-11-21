@@ -44,7 +44,11 @@ dist:
 	rm -f ${DISTNAME}/dwm-6.6 ${DISTNAME}/*.o\
 		${DISTNAME}/tools/dmenu-5.4-mod/dmenu\
 		${DISTNAME}/tools/dmenu-5.4-mod/stest\
-		${DISTNAME}/tools/dmenu-5.4-mod/*.o
+		${DISTNAME}/tools/dmenu-5.4-mod/*.o\
+		${DISTNAME}/tools/dwslit/dwslit\
+		${DISTNAME}/tools/dwslit/wmapps/bin\
+		${DISTNAME}/tools/dwtoolset/dwtoolset\
+		${DISTNAME}/tools/traytest/traytest
 	tar -cf ${DISTNAME}.tar ${DISTNAME}
 	gzip ${DISTNAME}.tar
 	rm -rf ${DISTNAME}

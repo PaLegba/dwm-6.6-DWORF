@@ -39,6 +39,8 @@ static const char urgbordercolor[]  = "#A00000";
 static const char *titlebarclosecolor   = "#A00000";
 static const char *titlebarpluscolor    = "#00501F";
 static const char *titlebarbtnfgcolor   = "#FFFFFF";
+static const char *titlebarbtnbgcolor   = NULL; /* optional active button bg */
+static const char *titlebarbtnbordercolor = "#000000"; /* button outline */
 /* titlebar background pattern: 0=solid, 1=sparse dots */
 static const int titlebar_pattern = 1;
 /* empty space around the title text, in pixels */

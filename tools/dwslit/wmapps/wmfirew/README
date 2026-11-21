@@ -1,0 +1,30 @@
+WMFirew - Public release
+-----------------------------------------------------------
+Authors...: Dave Turner (turnerd@reed.edu)
+
+Note......: I first thought of this a few years ago, and then forgot about it.  When I started making dock applets it came to mind again.
+
+
+Credits...: Thanks to Dag Wieers (dag@digibel.be) for wmpong, on which this is based.
+
+
+Description
+-----------------------------------------------------------
+Draws fireworks, which go up and explode. Intended for a
+windowmaker/afterstep dock/wharf applet.  I haven't actually tested it on 
+windowmaker, only afterstep.
+
+
+Files
+-----------------------------------------------------------
+README		This file.
+INSTALL		Installation instructions.
+BUGS		Description of little creatures.
+COPYING		GNU General Public License Version 2.
+
+
+Bugs
+--------------------------------------------------------------
+If you discover any bugs in this software, please send a
+bug report to turnerd@reed.edu and describe the problem in as much 
+detail as you can.  Better yet, fix it.  
