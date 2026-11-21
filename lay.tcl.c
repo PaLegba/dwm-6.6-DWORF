@@ -1,74 +1,68 @@
 void
-tcl(Monitor * m)
+tcl(Monitor *m)
 {
-	int x, y, h, w, mw, sw, bdw;
-	unsigned int i, n;
-	Client * c;
+	unsigned int i, n, nright;
+	float facts;
+	int mw, sw, x, y, ch, rem;
+	Client **cl;
 
-	for (n = 0, c = nexttiled(m->clients); c;
-	        c = nexttiled(c->next), n++);
-
-	if (n == 0)
+	if (!(cl = tiledclients(m, &n)))
 		return;
 
-	c = nexttiled(m->clients);
+	mw = (int)(m->mfact * m->ww);
+	mw = MAX(bh, MIN(mw, m->ww - 2 * bh));
 
-	mw = m->mfact * m->ww;
+	if (n == 1) {
+		resize(cl[0], m->wx, m->wy, m->ww - 2 * cl[0]->bw,
+			m->wh - 2 * cl[0]->bw, False);
+		free(cl);
+		return;
+	}
+
+	if (n == 2) {
+		resize(cl[0], m->wx, m->wy, mw - 2 * cl[0]->bw,
+			m->wh - 2 * cl[0]->bw, False);
+		resize(cl[1], m->wx + mw, m->wy,
+			m->ww - mw - 2 * cl[1]->bw,
+			m->wh - 2 * cl[1]->bw, False);
+		free(cl);
+		return;
+	}
+
 	sw = (m->ww - mw) / 2;
-	bdw = (2 * c->bw);
-	resize(c,
-	       n < 3 ? m->wx : m->wx + sw + 1,
-	       m->wy,
-	       n == 1 ? m->ww - bdw : mw - bdw,
-	       m->wh - bdw,
-	       False);
+	resize(cl[0], m->wx + sw, m->wy, mw - 2 * cl[0]->bw,
+		m->wh - 2 * cl[0]->bw, False);
 
-	if (--n == 0)
-		return;
+	nright = (n - 1) / 2;
 
-	w = (m->ww - mw) / ((n > 1) + 1);
-	c = nexttiled(c->next);
-
-	if (n > 1)
-	{
-		x = m->wx + ((n > 1) ? mw + sw : mw);
-		y = m->wy;
-		h = m->wh / (n / 2);
-
-		if (h < bh)
-			h = m->wh;
-
-		for (i = 0; c && i < n / 2; c = nexttiled(c->next), i++)
-		{
-			resize(c,
-			       x,
-			       y,
-			       w - bdw,
-			       (i + 1 == n / 2) ? m->wy + m->wh - y - bdw : h - bdw,
-			       False);
-
-			if (h != m->wh)
-				y = c->y + HEIGHT(c);
-		}
-	}
-
-	x = (n + 1 / 2) == 1 ? mw : m->wx;
+	/* right column, then left column; heights follow cfact */
+	x = m->wx + mw + sw;
 	y = m->wy;
-	h = m->wh / ((n + 1) / 2);
-
-	if (h < bh)
-		h = m->wh;
-
-	for (i = 0; c; c = nexttiled(c->next), i++)
-	{
-		resize(c,
-		       x,
-		       y,
-		       (i + 1 == (n + 1) / 2) ? w - bdw : w - bdw,
-		       (i + 1 == (n + 1) / 2) ? m->wy + m->wh - y - bdw : h - bdw,
-		       False);
-
-		if (h != m->wh)
-			y = c->y + HEIGHT(c);
+	rem = m->wh;
+	for (i = 1, facts = 0; i < 1 + nright; i++)
+		facts += cl[i]->cfact;
+	for (i = 1; i < 1 + nright; i++) {
+		ch = facts > 0 ? (int)(rem * (cl[i]->cfact / facts)) : 0;
+		resize(cl[i], x, y, sw - 2 * cl[i]->bw,
+			MAX(1, ch) - 2 * cl[i]->bw, False);
+		y += MAX(1, ch);
+		rem -= ch;
+		facts -= cl[i]->cfact;
 	}
+
+	x = m->wx;
+	y = m->wy;
+	rem = m->wh;
+	for (i = 1 + nright, facts = 0; i < n; i++)
+		facts += cl[i]->cfact;
+	for (i = 1 + nright; i < n; i++) {
+		ch = facts > 0 ? (int)(rem * (cl[i]->cfact / facts)) : 0;
+		resize(cl[i], x, y, sw - 2 * cl[i]->bw,
+			MAX(1, ch) - 2 * cl[i]->bw, False);
+		y += MAX(1, ch);
+		rem -= ch;
+		facts -= cl[i]->cfact;
+	}
+
+	free(cl);
 }

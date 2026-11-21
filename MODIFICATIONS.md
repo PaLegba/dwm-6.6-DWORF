@@ -169,6 +169,8 @@ On cleanup, every client is unmanaged, reparented to root, mapped, and its save-
 
 `UnmapNotify` handling releases the frame for both real and synthetic unmap events once the real client is actually unmapped. This matters for modal/dialog windows that hide or withdraw themselves instead of being destroyed. On release, the client is mapped back to root only if it was viewable before release or is still shaded; withdrawn/hidden clients stay unmapped at root. This avoids orphan grey frames left behind after modal windows close.
 
+Transient and `_NET_WM_WINDOW_TYPE_DIALOG` clients are frameless: `manage()` sets `ismodal`, keeps `c->win == c->client`, skips reparenting/save-set, and never creates a titlebar close button. They stay floating and keep their requested geometry (clamped to the monitor). `unmanage()` restores their original border instead of reparenting or destroying the client. This fixes closing a modal through dwm killing the whole application through `XKillClient` on the shared client connection.
+
 ---
 
 ## 3. Titlebar
@@ -252,22 +254,15 @@ If a shaded window is moved to an unsupported layout or toggled into floating st
 
 Shading direction depends on layout:
 
-- `tile`: horizontal grey titlebar (`shadevertical = 0`)
-- `bstack`: vertical grey titlebar (`shadevertical = 1`)
-- `grid`: vertical grey titlebar (`shadevertical = 1`)
+- `tile`: horizontal grey titlebar in a multi-window column; a single
+  master or stack window docks vertically to the outer edge
+- `bstack`: vertical grey titlebar in a multi-window row; a single master or
+  stack window docks horizontally to the top/bottom edge
+- `grid`: vertical grey titlebar; shaded windows dock to a right-side rail
 
-Horizontal shaded bar:
-
-- fixed height `bh` (bar height)
-- spans the assigned column width
-- its layout cell reserves the frame border plus `2 * gappx` extra vertical space, so the bar interior is `bh` and normal `gappx` inset can be applied while keeping the bar height stable
-- the close button scales to the full bar interior height and its square is used as the hit box
-
-Vertical shaded bar:
-
-- fixed width `titlebar_width`
-- spans the assigned row/area height
-- its layout cell reserves `2 * gappx` extra horizontal space, so normal `gappx` inset can be applied on all sides while the bar itself keeps width `titlebar_width`
+A single shaded region is not promoted: the remaining master/stack region
+takes the freed width/height, so no empty area is left. In `grid` the
+unshaded queue is re-gridded in the space left by the rail.
 
 All other windows in the same stack/row/column reflow around shaded bars.
 
@@ -295,14 +290,15 @@ Included layouts:
 
 Feature support matrix:
 
-| Feature | tile | bstack | grid | other layouts |
-|---|---|---|---|---|
-| vertical titlebar | yes | yes | yes | yes |
-| close/[o] controls | yes | yes | yes | yes |
-| double-click shading | yes (horizontal) | yes (vertical) | yes (vertical) | no, auto-unshade |
-| `cfact` geometry | yes | yes | no visual effect | no |
-| gaps (`gappx`) | yes | yes | yes | no |
-| master promotion when shaded | yes | yes | n/a | n/a |
+| Feature | tile | bstack | grid | gaplessgrid | tcl | other layouts |
+|---|---|---|---|---|---|---|
+| vertical titlebar | yes | yes | yes | yes | yes | yes |
+| close/[o] controls | yes | yes | yes | yes | yes | yes |
+| double-click shading | yes | yes | yes | no, auto-unshade | no, auto-unshade | no, auto-unshade |
+| `cfact` geometry | yes | yes | yes | yes | yes | no |
+| `mfact` geometry | yes | yes | yes (column bias) | yes (column bias) | yes | fibonacci yes |
+| gaps (`gappx`) | yes | yes | yes | no | no | no |
+| master promotion when shaded | yes | yes | n/a | n/a | n/a | n/a |
 
 ### 4.1 `cfact`
 
@@ -312,6 +308,10 @@ Supported in:
 
 - `tile`: master/stack heights are distributed proportionally to `cfact`
 - `bstack`: master/stack widths are distributed proportionally to `cfact`
+- `grid` / `gaplessgrid`: column and row sizes are weighted by the average
+  `cfact` of their cells; `mfact` biases the first column (`0.5` = equal)
+- `tcl`: the two side columns distribute their heights proportionally to
+  `cfact`; `mfact` controls the centered master width
 
 Key bindings in `config.h`:
 
@@ -605,7 +605,7 @@ Applied/adapted:
 ## 8. Known limitations and TODO
 
 1. Shading is supported only in `tile`, `bstack`, and `grid`.
-2. `cfact` has no visual effect in `grid` and other layouts.
+2. `cfact` has no visual effect in `fibonacci`/`spiral`/`dwindle`; those layouts keep `mfact` only.
 3. Gaps are applied only in `tile`, `bstack`, and `grid`.
 4. `titlebar_side` is present but only left-side titlebars are implemented.
 5. `titlebar_button_width` exists in config but is not currently used by the renderer.
@@ -619,6 +619,7 @@ Possible next steps:
 
 - Extend shading to `gaplessgrid`, `tcl`, `fibonacci`.
 - Extend `cfact` and gaps to remaining layouts.
+- Add a focused per-split factor for the fibonacci layouts.
 - Use or remove `titlebar_button_width`.
 - Use floating border colors.
 - Remove or intentionally re-enable the `quit` binding.

@@ -62,6 +62,7 @@
 #define HEIGHT(X)               ((X)->h + 2 * (X)->bw)
 #define TAGMASK                 ((1 << LENGTH(tags)) - 1)
 #define TEXTW(X)                (drw_fontset_getwidth(drw, (X)) + lrpad)
+#define ISFRAMELESS(C)          ((C)->ismodal)
 
 /* enums */
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
@@ -105,6 +106,7 @@ struct Client {
         long oldmask;
         unsigned int tags;
         int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
+        int ismodal;
         int is_scanned;
         int isshaded, shadevertical;
         int shx, shy, shw, shh;
@@ -228,6 +230,9 @@ static Client *nexttiled(Client *c);
 static Client **tiledclients(Monitor *m, unsigned int *n);
 static int canshade(Client *c);
 static int layout_supports_shading(const Layout *lt);
+static void resizecolumn(Client **cl, unsigned int n, int x, int y, int w, int h);
+static void resizerow(Client **cl, unsigned int n, int x, int y, int w, int h);
+static int allunshaded(Client **cl, unsigned int n);
 static void toggleshade(Client *c);
 static void unshade(Client *c);
 static void pop(Client *c);
@@ -414,7 +419,7 @@ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 	if (*w < bh)
 		*w = bh;
 	if (resizehints || c->isfloating || !c->mon->lt[c->mon->sellt]->arrange) {
-		int titlew = titlebar_width;
+		int titlew = ISFRAMELESS(c) ? 0 : titlebar_width;
 		if (!c->hintsvalid)
 			updatesizehints(c);
 		/* size hints describe the client, not the frame */
@@ -721,7 +726,7 @@ buttonpress(XEvent *e)
 	} else if ((c = wintoclient(ev->window))) {
 		focus(c);
 		restack(selmon);
-		if (ev->window == c->win) {
+		if (ev->window == c->win && !ISFRAMELESS(c)) {
 			int rx = ev->x, ry = ev->y;
 			int bs = (c->isshaded && !c->shadevertical)
 				? MIN(c->h, c->w) : titlebar_width;
@@ -886,6 +891,17 @@ configure(Client *c)
         ce.display = dpy;
         ce.event = c->client;
         ce.window = c->client;
+        if (ISFRAMELESS(c)) {
+                ce.x = c->x;
+                ce.y = c->y;
+                ce.width = MAX(1, c->w);
+                ce.height = MAX(1, c->h);
+                ce.border_width = 0;
+                ce.above = None;
+                ce.override_redirect = False;
+                XSendEvent(dpy, c->client, False, StructureNotifyMask, (XEvent *)&ce);
+                return;
+        }
         if (c->isfullscreen) {
                 ce.x = c->x + c->bw;
                 ce.y = c->y + c->bw;
@@ -941,6 +957,20 @@ configurerequest(XEvent *e)
 	XWindowChanges wc;
 
 	if ((c = wintoclient(ev->window))) {
+		if (c->ismodal) {
+			m = c->mon;
+			if (ev->value_mask & CWX)
+				c->x = m->mx + ev->x;
+			if (ev->value_mask & CWY)
+				c->y = m->my + ev->y;
+			if (ev->value_mask & CWWidth)
+				c->w = ev->width;
+			if (ev->value_mask & CWHeight)
+				c->h = ev->height;
+			resizeclient(c, c->x, c->y, c->w, c->h);
+			XSync(dpy, False);
+			return;
+		}
 		if (ev->value_mask & CWBorderWidth) {
 			c->bw = ev->border_width;
 			XSetWindowBorderWidth(dpy, c->win, c->bw);
@@ -1075,7 +1105,7 @@ drawborder(Client *c, int focused)
 {
 	unsigned int s;
 
-	if (!c || !c->win)
+	if (!c || !c->win || ISFRAMELESS(c))
 		return;
 	s = c->isurgent ? SchemeUrg : (focused ? SchemeSel : SchemeNorm);
 	XSetWindowBorder(dpy, c->win, scheme[s][ColBorder].pixel);
@@ -1496,6 +1526,8 @@ manage(Window w, XWindowAttributes *wa)
                 c->mon = selmon;
                 applyrules(c);
         }
+        c->ismodal = trans != None
+                || getatomprop(c, netatom[NetWMWindowType]) == netatom[NetWMWindowTypeDialog];
 
         if (c->x + WIDTH(c) > c->mon->wx + c->mon->ww)
                 c->x = c->mon->wx + c->mon->ww - WIDTH(c);
@@ -1504,6 +1536,38 @@ manage(Window w, XWindowAttributes *wa)
         c->x = MAX(c->x, c->mon->wx);
         c->y = MAX(c->y, c->mon->wy);
         c->bw = borderpx;
+
+        /* modals are frameless: they keep the client's own geometry and
+         * have no titlebar close button that could kill the whole app */
+        if (c->ismodal) {
+                c->isfloating = c->oldstate = 1;
+                c->bw = 0;
+                c->win = c->client;
+                XSetWindowBorderWidth(dpy, c->client, 0);
+                XSelectInput(dpy, c->client, EnterWindowMask | FocusChangeMask |
+                             PropertyChangeMask | StructureNotifyMask);
+                updatewindowtype(c);
+                updatesizehints(c);
+                updatewmhints(c);
+                grabbuttons(c, 0);
+                attachtop(c);
+                attachstack(c);
+                XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32,
+                               PropModeAppend, (unsigned char *) &(c->client), 1);
+                XMapRaised(dpy, c->client);
+                setclientstate(c, NormalState);
+                if (c->mon == selmon)
+                        unfocus(selmon->sel, 0);
+                c->mon->sel = c;
+                {
+                        XkbStateRec kbd_state;
+                        XkbGetState(dpy, XkbUseCoreKbd, &kbd_state);
+                        c->kbdgrp = kbd_state.group;
+                }
+                arrange(c->mon);
+                focus(NULL);
+                return;
+        }
 
         /* CREATE FRAME */
         c->win = XCreateWindow(dpy, root, c->x, c->y, c->w, c->h,
@@ -1877,6 +1941,17 @@ void
 resizeclient(Client *c, int x, int y, int w, int h)
 {
         int content_w, content_h;
+
+        if (ISFRAMELESS(c)) {
+                c->oldx = c->x; c->x = x;
+                c->oldy = c->y; c->y = y;
+                c->oldw = c->w; c->w = w;
+                c->oldh = c->h; c->h = h;
+                XMoveResizeWindow(dpy, c->client, x, y, w, h);
+                configure(c);
+                XSync(dpy, False);
+                return;
+        }
 
         if (!c->isfullscreen && !c->isshaded
         && (c->isfloating || !c->mon->lt[c->mon->sellt]->arrange)) {
@@ -2561,6 +2636,55 @@ tagmon(const Arg *arg)
 	sendmon(selmon->sel, dirtomon(arg->i));
 }
 
+int
+allunshaded(Client **cl, unsigned int n)
+{
+	unsigned int i;
+
+	for (i = 0; i < n; i++)
+		if (cl[i]->isshaded)
+			return 0;
+	return 1;
+}
+
+void
+resizecolumn(Client **cl, unsigned int n, int x, int y, int w, int h)
+{
+	unsigned int i;
+	float facts = 0;
+	int rem = h, ch;
+
+	for (i = 0; i < n; i++)
+		facts += cl[i]->cfact;
+	for (i = 0; i < n; i++) {
+		ch = facts > 0 ? (int)(rem * (cl[i]->cfact / facts)) : 0;
+		resizetile(cl[i], x, y, w - 2 * cl[i]->bw,
+			MAX(1, ch) - 2 * cl[i]->bw, 0);
+		y += MAX(1, ch);
+		rem -= ch;
+		facts -= cl[i]->cfact;
+	}
+}
+
+void
+resizerow(Client **cl, unsigned int n, int x, int y, int w, int h)
+{
+	unsigned int i;
+	float facts = 0;
+	int rem = w, cw;
+
+	for (i = 0; i < n; i++)
+		facts += cl[i]->cfact;
+	for (i = 0; i < n; i++) {
+		cw = facts > 0 ? (int)(rem * (cl[i]->cfact / facts)) : 0;
+		resizetile(cl[i], x, y, MAX(1, cw) - 2 * cl[i]->bw,
+			h - 2 * cl[i]->bw, 0);
+		x += MAX(1, cw);
+		rem -= cw;
+		facts -= cl[i]->cfact;
+	}
+}
+
 void
 tile(Monitor *m)
 {
@@ -2574,6 +2698,28 @@ tile(Monitor *m)
 		return;
 
 	nm = MIN(n, m->nmaster);
+
+	/* a collapsed single master/stack docks to its outer edge and the
+	 * remaining region takes the whole freed space */
+	if (nm == 1 && n > 1 && cl[0]->isshaded && allunshaded(cl + 1, n - 1)) {
+		int barw = titlebar_width + 2 * cl[0]->bw + 2 * (int)gappx;
+		cl[0]->shadevertical = 1;
+		resizetile(cl[0], m->wx, m->wy, titlebar_width + 2 * (int)gappx,
+			m->wh - 2 * cl[0]->bw, 0);
+		resizecolumn(cl + 1, n - 1, m->wx + barw, m->wy, m->ww - barw, m->wh);
+		free(cl);
+		return;
+	}
+	if (n - nm == 1 && nm > 0 && cl[nm]->isshaded && allunshaded(cl, nm)) {
+		int barw = titlebar_width + 2 * cl[nm]->bw + 2 * (int)gappx;
+		cl[nm]->shadevertical = 1;
+		resizetile(cl[nm], m->wx + m->ww - barw, m->wy,
+			titlebar_width + 2 * (int)gappx, m->wh - 2 * cl[nm]->bw, 0);
+		resizecolumn(cl, nm, m->wx, m->wy, m->ww - barw, m->wh);
+		free(cl);
+		return;
+	}
+
 	mw = n > m->nmaster ? (m->nmaster ? m->ww * m->mfact : 0) : m->ww;
 	used = ecalloc(n, sizeof(unsigned char));
 	barh = bh + 2 * (int)borderpx + 2 * (int)gappx;
@@ -2685,6 +2831,8 @@ togglefloating(const Arg *arg)
 		return;
 	if (selmon->sel->isfullscreen) /* no support for fullscreen windows */
 		return;
+	if (selmon->sel->ismodal) /* modals stay frameless and floating */
+		return;
 	if (selmon->sel->isshaded)
 		unshade(selmon->sel);
 	selmon->sel->isfloating = !selmon->sel->isfloating || selmon->sel->isfixed;
@@ -2757,6 +2905,7 @@ unmanage(Client *c, int destroyed)
 {
         Monitor *m = c->mon;
         XWindowChanges wc;
+        int wasmodal = c->ismodal;
 
         detach(c);
         detachstack(c);
@@ -2771,19 +2920,24 @@ unmanage(Client *c, int destroyed)
                 XSetErrorHandler(xerrordummy);
                 XSelectInput(dpy, c->client, NoEventMask);
                 XUngrabButton(dpy, AnyButton, AnyModifier, c->client);
-                XRemoveFromSaveSet(dpy, c->client);
-                XReparentWindow(dpy, c->client, root,
-                                c->x + c->bw + titlebar_width, c->y + c->bw);
-                if (viewable || c->isshaded)
-                        XMapWindow(dpy, c->client);
-                XConfigureWindow(dpy, c->client, CWBorderWidth, &wc);
+                if (wasmodal) {
+                        XSetWindowBorderWidth(dpy, c->client, c->oldbw);
+                } else {
+                        XRemoveFromSaveSet(dpy, c->client);
+                        XReparentWindow(dpy, c->client, root,
+                                        c->x + c->bw + titlebar_width, c->y + c->bw);
+                        if (viewable || c->isshaded)
+                                XMapWindow(dpy, c->client);
+                        XConfigureWindow(dpy, c->client, CWBorderWidth, &wc);
+                }
                 XSelectInput(dpy, c->client, c->oldmask);
                 setclientstate(c, WithdrawnState);
                 XSync(dpy, False);
                 XSetErrorHandler(xerror);
                 XUngrabServer(dpy);
         }
-        XDestroyWindow(dpy, c->win);
+        if (!wasmodal)
+                XDestroyWindow(dpy, c->win);
         if (prevzoom == c)
                 prevzoom = NULL;
         free(c);
@@ -3436,6 +3590,8 @@ drawframe(Client *c, int wintype)
 	XGlyphInfo ext;
 	int pen_x, pen_y, text_h;
 
+	if (ISFRAMELESS(c))
+		return;
 	if (c->isfullscreen)
 		return;
 	if (c->isshaded) {
