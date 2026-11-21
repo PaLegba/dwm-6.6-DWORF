@@ -1026,7 +1026,7 @@ createmon(void)
 	m = ecalloc(1, sizeof(Monitor));
 	m->tagset[0] = m->tagset[1] = 1;
 	m->mfact = mfact;
-	m->nmaster = nmaster;
+	m->nmaster = MAX(0, MIN(nmaster, maxnmaster));
 	m->showbar = showbar;
 	m->topbar = topbar;
 	m->lt[0] = &layouts[0];
@@ -1444,8 +1444,12 @@ grabkeys(void)
 void
 incnmaster(const Arg *arg)
 {
-	selmon->nmaster = MAX(selmon->nmaster + arg->i, 0);
-	selmon->pertag->nmasters[selmon->pertag->curtag] = selmon->nmaster;
+	int nm = MAX(0, MIN(selmon->nmaster + arg->i, maxnmaster));
+
+	if (nm == selmon->nmaster)
+		return;
+	selmon->nmaster = nm;
+	selmon->pertag->nmasters[selmon->pertag->curtag] = nm;
 	arrange(selmon);
 }
 
@@ -3255,7 +3259,7 @@ applytag(Monitor *m)
 	Pertag *p = m->pertag;
 	Client *c;
 
-	m->nmaster = p->nmasters[p->curtag];
+	m->nmaster = MAX(0, MIN(p->nmasters[p->curtag], maxnmaster));
 	m->mfact = p->mfacts[p->curtag];
 	m->sellt = p->sellts[p->curtag];
 	m->lt[0] = p->ltidxs[p->curtag][0];

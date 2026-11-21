@@ -185,6 +185,22 @@ sleep 0.5
 grep -q "parent alive" "$TMP/dialog.log" || fail "closing the dialog killed its app"
 geo PARENT || fail "parent disappeared after dialog close"
 
+# master-count clamp: with 8 clients, 10 increments must stop at maxnmaster
+for n in E F G H; do
+	DISPLAY=$DISP xterm -T "$n" >/dev/null 2>&1 &
+	PIDS="$PIDS $!"
+	sleep 0.2
+done
+sleep 0.5
+sleepkey alt t
+for _ in $(seq 1 10); do sleepkey alt i; done
+geo C
+[ "$GX" -gt 400 ] || fail "nmaster exceeded maxnmaster"
+for _ in $(seq 1 20); do sleepkey alt d; done
+for _ in $(seq 1 10); do sleepkey alt i; done
+geo C
+[ "$GX" -gt 400 ] || fail "nmaster lower/upper clamp failed"
+
 kill -TERM "$DWM_PID"
 wait "$DWM_PID" 2>/dev/null || true
 sleep 0.2
