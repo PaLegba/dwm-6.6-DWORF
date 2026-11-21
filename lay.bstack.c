@@ -10,6 +10,28 @@ bstack(Monitor *m) {
 		return;
 
 	nm = MIN(n, m->nmaster);
+
+	/* collapsed single master/stack dock to the outer row edge */
+	if (nm == 1 && n > 1 && cl[0]->isshaded && allunshaded(cl + 1, n - 1)) {
+		int barh = bh + 2 * cl[0]->bw + 2 * (int)gappx;
+		cl[0]->shadevertical = 0;
+		resizetile(cl[0], m->wx, m->wy, m->ww - 2 * cl[0]->bw,
+			barh - 2 * cl[0]->bw, 0);
+		resizerow(cl + 1, n - 1, m->wx, m->wy + barh,
+			m->ww, m->wh - barh);
+		free(cl);
+		return;
+	}
+	if (n - nm == 1 && nm > 0 && cl[nm]->isshaded && allunshaded(cl, nm)) {
+		int barh = bh + 2 * cl[nm]->bw + 2 * (int)gappx;
+		cl[nm]->shadevertical = 0;
+		resizetile(cl[nm], m->wx, m->wy + m->wh - barh,
+			m->ww - 2 * cl[nm]->bw, barh - 2 * cl[nm]->bw, 0);
+		resizerow(cl, nm, m->wx, m->wy, m->ww, m->wh - barh);
+		free(cl);
+		return;
+	}
+
 	if (n > m->nmaster)
 		mh = m->nmaster ? m->mfact * m->wh : 0;
 	else

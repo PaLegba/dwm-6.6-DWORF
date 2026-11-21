@@ -180,10 +180,15 @@ Each managed frame has a vertical titlebar on the left.
 ### Shading
 
 - Double-click a titlebar to shade/unshade a tiled window.
-- In `tile`, a shaded window becomes a horizontal titlebar.
-- In `bstack` and `grid`, it becomes a vertical titlebar.
+- In `tile`, a single shaded master docks to the left edge and the stack fills the freed width; a single shaded stack window docks to the right edge and the master fills the freed width.
+- In `bstack`, a single shaded master docks to the top edge and the stack fills the freed height; a single shaded stack window docks to the bottom edge and the master fills the freed height.
+- In `grid`, shaded windows dock to the right edge and the remaining windows regrid the freed space.
 - Shaded windows use the normal/inactive titlebar colors.
 - Shading is supported in `tile`, `bstack`, and `grid`; switching to an unsupported layout unshades them cleanly.
+
+### Dialogs
+
+Transient and `_NET_WM_WINDOW_TYPE_DIALOG` windows are frameless: they keep their own geometry, are not reparented, and have no titlebar close button. Closing a dialog therefore cannot kill its parent application through dwm.
 
 ### Fullscreen
 
@@ -236,7 +241,8 @@ Available layouts:
 - `tcl`
 - `spiral` / `dwindle` — fibonacci variants
 
-`cfact` geometry currently applies to `tile` and `bstack`.
+`cfact` geometry applies to `tile`, `bstack`, `grid`, `gaplessgrid`, and `tcl`.
+`mfact` applies to `tile`, `bstack`, `grid`, `gaplessgrid`, `tcl`, and the fibonacci layouts.
 Gaps (`gappx`) currently apply to `tile`, `bstack`, and `grid`.
 Shading currently applies to `tile`, `bstack`, and `grid`.
 
@@ -335,6 +341,13 @@ The repository includes `xephyr.sh` as a development helper. A minimal manual se
 Xephyr :1 -screen 1280x1024 -ac &
 DISPLAY=:1 ./dwm-6.6 -S ork &
 DISPLAY=:1 xterm &
+```
+
+The regression smoke test starts its own Xephyr and checks tile/bstack/grid
+shading, `mfact`/`cfact`, and modal behavior:
+
+```sh
+./tests/smoke.sh
 ```
 
 Useful checks:
