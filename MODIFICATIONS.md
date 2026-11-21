@@ -387,6 +387,8 @@ Each monitor keeps a `Pertag` structure with per-tag copies of:
 
 `view()` and `toggleview()` select the active tag index and call `applytag()` to restore that tag's state before arranging. `setlayout()`, `incnmaster()`, `setmfact()`, `togglebar()`, `cfactmouse()`, and `cfactscroll()` write changes back to the active tag entry. Viewing all tags uses index `0`; regular tags use `1..LENGTH(tags)`.
 
+`incnmaster()` clamps the master count to `0..maxnmaster` (`config.h`, default 6); `createmon()` and `applytag()` apply the same clamp when restoring state.
+
 Client-specific state such as `cfact` remains attached to the client, not to the tag.
 
 ### 4.8 Per-window keyboard layout

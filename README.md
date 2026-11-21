@@ -213,7 +213,7 @@ The complete list is in `config.h`; these are the most important bindings.
 | `Mod+Space` | next layout |
 | `Mod+t` / `Mod+f` / `Mod+m` | tile / floating / monocle |
 | `Mod+h` / `Mod+l` | decrease / increase `mfact` |
-| `Mod+i` / `Mod+d` | increase / decrease master count |
+| `Mod+i` / `Mod+d` | increase / decrease master count (0 … `maxnmaster`) |
 | `Mod+Shift+h` / `Mod+Shift+l` | increase / decrease `cfact` |
 | `Mod+Shift+o` | reset `cfact` |
 | `Mod+Shift+Space` | toggle floating |
@@ -327,6 +327,7 @@ Configuration is compile-time, in dwm tradition.
 - `config.def.h` is a complete default configuration for DWORF; copy it to `config.h` for a fresh setup.
 - `themes.h` contains the runtime theme palettes.
 - `config.mk` controls build flags, install prefix, and Xinerama.
+- `maxnmaster` in `config.h` caps the master count (`Mod+i` / `Mod+d`); the default is 6.
 - After editing configuration, rebuild with `make clean && make`.
 
 The authoritative documentation for behavior and internals is in `MODIFICATIONS.md`. The man page is `dwm.1`.
