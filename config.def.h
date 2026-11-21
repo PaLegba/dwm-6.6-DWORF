@@ -51,6 +51,10 @@ static const char *floatselbordercolor  = "#F0F000";
 static const char *titlebarclosecolor   = "#A00000";
 static const char *titlebarpluscolor    = "#00501F";
 static const char *titlebarbtnfgcolor   = "#FFFFFF";
+/* titlebar background pattern: 0=solid, 1=sparse dots */
+static const int titlebar_pattern = 1;
+/* empty space around the title text, in pixels */
+static const int titlebar_textpad = 4;
 
 /* fallback dmenu colors when no -S theme is passed */
 static const char col_gray1[]       = "#00101F";

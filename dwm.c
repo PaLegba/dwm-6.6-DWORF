@@ -204,6 +204,8 @@ static void drawbars(void);
 static void drawborder(Client *c, int focused);
 static void drawframe(Client *c, int wintype);
 static void drawshadeframe(Client *c);
+static void drawtitlebg(Client *c, unsigned int sidx, int w, int h);
+static void drawtitleplate(Client *c, unsigned int sidx, int x, int y, int w, int h);
 static XftFont *rotatedfont(Fnt *base, const char *text, int maxwidth);
 static XftFont *scaledfont(Fnt *base, int maxheight);
 static void enternotify(XEvent *e);
@@ -242,7 +244,7 @@ static void propertynotify(XEvent *e);
 static void quit(const Arg *arg);
 static Monitor *recttomon(int x, int y, int w, int h);
 static void resize(Client *c, int x, int y, int w, int h, int interact);
-static void resizeclient(Client *c, int x, int y, int w, int h);
+static void resizeclient(Client *c, int x, int y, int w, int h, int interact);
 static void resizetile(Client *c, int x, int y, int w, int h, int interact);
 static void resizemouse(const Arg *arg);
 static void restack(Monitor *m);
@@ -347,6 +349,11 @@ struct Pertag {
 
 
 GC frame_gc;  // наш собственный graphics context
+static Pixmap titlebar_stipple;
+/* 8x8 square dot lattice: rotation-neutral in any titlebar direction */
+static const unsigned char titlebar_dots[] = {
+	0x88, 0x00, 0x00, 0x00, 0x88, 0x00, 0x00, 0x00
+};
 
 
 /* compile-time check if all tags fit into an unsigned int bit array. */
@@ -824,6 +831,8 @@ cleanup(void)
 	XftColorFree(dpy, DefaultVisual(dpy, screen), DefaultColormap(dpy, screen), &btncloseclr);
 	XftColorFree(dpy, DefaultVisual(dpy, screen), DefaultColormap(dpy, screen), &btnplusclr);
 	XftColorFree(dpy, DefaultVisual(dpy, screen), DefaultColormap(dpy, screen), &btnfgclr);
+	if (titlebar_stipple != None)
+		XFreePixmap(dpy, titlebar_stipple);
 	XFreeGC(dpy, frame_gc);
 	XDestroyWindow(dpy, wmcheckwin);
 	drw_free(drw);
@@ -946,7 +955,7 @@ configurenotify(XEvent *e)
 			for (m = mons; m; m = m->next) {
 				for (c = m->clients; c; c = c->next)
 					if (c->isfullscreen)
-						resizeclient(c, m->mx, m->my, m->mw, m->mh);
+						resizeclient(c, m->mx, m->my, m->mw, m->mh, 0);
 				XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
 			}
 			focus(NULL);
@@ -974,7 +983,7 @@ configurerequest(XEvent *e)
 				c->w = ev->width;
 			if (ev->value_mask & CWHeight)
 				c->h = ev->height;
-			resizeclient(c, c->x, c->y, c->w, c->h);
+			resizeclient(c, c->x, c->y, c->w, c->h, 0);
 			XSync(dpy, False);
 			return;
 		}
@@ -1023,7 +1032,7 @@ configurerequest(XEvent *e)
 				XMoveWindow(dpy, c->win, c->x, c->y);
 				configure(c);
 			} else if (ISVISIBLE(c))
-				resizeclient(c, c->x, c->y, c->w, c->h);
+				resizeclient(c, c->x, c->y, c->w, c->h, 0);
 		} else
 			configure(c);
 	} else {
@@ -1872,7 +1881,7 @@ unshade(Client *c)
 	c->w = MAX(1, c->shw);
 	c->h = MAX(1, c->shh);
 	XMapWindow(dpy, c->client);
-	resizeclient(c, c->x, c->y, c->w, c->h);
+	resizeclient(c, c->x, c->y, c->w, c->h, 0);
 }
 
 void
@@ -1973,15 +1982,15 @@ void
 resize(Client *c, int x, int y, int w, int h, int interact)
 {
 	if (ISDOCK(c)) {
-		resizeclient(c, x, y, w, h);
+		resizeclient(c, x, y, w, h, interact);
 		return;
 	}
 	if (c->isshaded) {
-		resizeclient(c, x, y, w, h);
+		resizeclient(c, x, y, w, h, interact);
 		return;
 	}
 	if (applysizehints(c, &x, &y, &w, &h, interact))
-		resizeclient(c, x, y, w, h);
+		resizeclient(c, x, y, w, h, interact);
 }
 
 /* tiled clients must fill their cell even if size increments are smaller */
@@ -1995,11 +2004,11 @@ resizetile(Client *c, int x, int y, int w, int h, int interact)
 
 	resize(c, x, y, w, h, interact);
 	if (!c->isshaded && (c->w < w || c->h < h))
-		resizeclient(c, x, y, w, h);
+		resizeclient(c, x, y, w, h, 0);
 }
 
 void
-resizeclient(Client *c, int x, int y, int w, int h)
+resizeclient(Client *c, int x, int y, int w, int h, int interact)
 {
         int content_w, content_h;
 
@@ -2015,7 +2024,7 @@ resizeclient(Client *c, int x, int y, int w, int h)
         }
 
         if (!c->isfullscreen && !c->isshaded
-        && (c->isfloating || !c->mon->lt[c->mon->sellt]->arrange)) {
+        && (c->isfloating || !c->mon->lt[c->mon->sellt]->arrange) && !interact) {
                 w = MAX(1, MIN(w, c->mon->ww - 2 * c->bw));
                 h = MAX(1, MIN(h, c->mon->wh - 2 * c->bw));
                 if (x + w + 2 * c->bw > c->mon->wx + c->mon->ww)
@@ -2417,7 +2426,7 @@ setfullscreen(Client *c, int fullscreen)
 		c->bw = 0;
 		XSetWindowBorderWidth(dpy, c->win, c->bw);
 		c->isfloating = 1;
-		resizeclient(c, c->mon->mx, c->mon->my, c->mon->mw, c->mon->mh);
+		resizeclient(c, c->mon->mx, c->mon->my, c->mon->mw, c->mon->mh, 0);
 		XRaiseWindow(dpy, c->win);
 	} else if (!fullscreen && c->isfullscreen){
 		XChangeProperty(dpy, c->client, netatom[NetWMState], XA_ATOM, 32,
@@ -2430,7 +2439,7 @@ setfullscreen(Client *c, int fullscreen)
 		c->y = c->oldy;
 		c->w = c->oldw;
 		c->h = c->oldh;
-		resizeclient(c, c->x, c->y, c->w, c->h);
+		resizeclient(c, c->x, c->y, c->w, c->h, 0);
 		arrange(c->mon);
 	}
 }
@@ -2557,6 +2566,14 @@ setup(void)
 	updategeom();
 
 frame_gc = XCreateGC(dpy, root, 0, NULL);
+titlebar_stipple = None;
+if (titlebar_pattern == 1) {
+	titlebar_stipple = XCreateBitmapFromData(dpy, root,
+		(const char *)titlebar_dots, 8, 8);
+}
+if (titlebar_stipple != None) {
+	XSetStipple(dpy, frame_gc, titlebar_stipple);
+}
 
 
 	/* init atoms */
@@ -3623,6 +3640,28 @@ scaledfont(Fnt *base, int maxheight)
 }
 
 void
+drawtitlebg(Client *c, unsigned int sidx, int w, int h)
+{
+	XSetForeground(dpy, frame_gc, scheme[sidx][ColBg].pixel);
+	XFillRectangle(dpy, c->win, frame_gc, 0, 0, w, h);
+	if (titlebar_stipple == None)
+		return;
+	XSetForeground(dpy, frame_gc, scheme[sidx][ColFg].pixel);
+	XSetFillStyle(dpy, frame_gc, FillStippled);
+	XFillRectangle(dpy, c->win, frame_gc, 0, 0, w, h);
+	XSetFillStyle(dpy, frame_gc, FillSolid);
+}
+
+void
+drawtitleplate(Client *c, unsigned int sidx, int x, int y, int w, int h)
+{
+	if (w <= 0 || h <= 0)
+		return;
+	XSetForeground(dpy, frame_gc, scheme[sidx][ColBg].pixel);
+	XFillRectangle(dpy, c->win, frame_gc, x, y, w, h);
+}
+
+void
 drawshadeframe(Client *c)
 {
 	XftColor *color;
@@ -3631,16 +3670,16 @@ drawshadeframe(Client *c)
 	XGlyphInfo ext;
 	XRectangle clip;
 	int bs, tx, baseline, top, bottom, available, text_h, pen_x, pen_y;
+	int ty, tb;
 
-	XSetForeground(dpy, frame_gc, scheme[SchemeNorm][ColBg].pixel);
-	XFillRectangle(dpy, c->win, frame_gc, 0, 0, c->w, c->h);
+	drawtitlebg(c, SchemeNorm, c->w, c->h);
 
 	bs = c->shadevertical ? MIN(titlebar_width, c->h) : MIN(c->h, c->w);
 	if (bs < 1)
 		bs = 1;
-	XSetForeground(dpy, frame_gc, btncloseclr.pixel);
+	XSetForeground(dpy, frame_gc, scheme[SchemeNorm][ColBg].pixel);
 	XFillRectangle(dpy, c->win, frame_gc, 0, 0, bs, bs);
-	XSetForeground(dpy, frame_gc, btnfgclr.pixel);
+	XSetForeground(dpy, frame_gc, scheme[SchemeNorm][ColFg].pixel);
 	if (bs > 6) {
 		int m = MAX(2, bs / 5);
 		XDrawLine(dpy, c->win, frame_gc, m, m, bs - m - 1, bs - m - 1);
@@ -3663,12 +3702,15 @@ drawshadeframe(Client *c)
 		XftTextExtentsUtf8(dpy, font, (const FcChar8 *)c->name,
 			strlen(c->name), &ext);
 		text_h = (int)ext.height;
-		top = bs + 3;
-		bottom = c->h - 3;
+		top = bs + titlebar_textpad;
+		bottom = c->h - titlebar_textpad;
 		available = bottom - top;
 		if (available > 0 && text_h > 0) {
 			pen_y = text_h > available ? bottom
 				: top + (available + text_h) / 2;
+			ty = MAX(top, pen_y - text_h - titlebar_textpad);
+			tb = MIN(bottom, pen_y + titlebar_textpad);
+			drawtitleplate(c, SchemeNorm, 0, ty, c->w, tb - ty);
 			pen_x = (c->w - (int)ext.width) / 2 + (int)ext.x;
 			clip.x = 0;
 			clip.y = top;
@@ -3683,11 +3725,16 @@ drawshadeframe(Client *c)
 		font = scaledfont(drw->fonts, c->h);
 		if (!font)
 			goto done;
-		tx = bs + 4;
+		tx = bs + titlebar_textpad;
 		if (tx < c->w) {
+			int px0, px1;
+
 			XftTextExtentsUtf8(dpy, font, (const FcChar8 *)c->name,
 				strlen(c->name), &ext);
 			baseline = (c->h - (int)ext.height) / 2 + (int)ext.y;
+			px0 = MAX(bs, tx - titlebar_textpad);
+			px1 = MIN(c->w, tx + (int)ext.width + titlebar_textpad);
+			drawtitleplate(c, SchemeNorm, px0, 0, px1 - px0, c->h);
 			clip.x = tx;
 			clip.y = 0;
 			clip.width = c->w - tx;
@@ -3717,6 +3764,8 @@ drawframe(Client *c, int wintype)
 	XftColor *xftcolor;
 	XGlyphInfo ext;
 	int pen_x, pen_y, text_h;
+	int active;
+	int ty, tb;
 
 	if (ISFRAMELESS(c))
 		return;
@@ -3728,15 +3777,17 @@ drawframe(Client *c, int wintype)
 	}
 
 	sidx = c->isurgent ? SchemeUrg : (wintype == 1 ? SchemeSel : SchemeNorm);
+	active = wintype == 1;
 
 	/* background */
-	XSetForeground(dpy, frame_gc, scheme[sidx][ColBg].pixel);
-	XFillRectangle(dpy, c->win, frame_gc, 0, 0, titlebar_width, c->h);
+	drawtitlebg(c, sidx, titlebar_width, c->h);
 
 	/* close button: the whole titlebar width, at the top */
-	XSetForeground(dpy, frame_gc, btncloseclr.pixel);
+	XSetForeground(dpy, frame_gc,
+		active ? btncloseclr.pixel : scheme[sidx][ColBg].pixel);
 	XFillRectangle(dpy, c->win, frame_gc, 0, 0, btn_size, btn_size);
-	XSetForeground(dpy, frame_gc, btnfgclr.pixel);
+	XSetForeground(dpy, frame_gc,
+		active ? btnfgclr.pixel : scheme[sidx][ColFg].pixel);
 	{
 		int m = MAX(2, btn_size / 5);
 		XDrawLine(dpy, c->win, frame_gc, m, m, btn_size - m - 1, btn_size - m - 1);
@@ -3751,9 +3802,11 @@ drawframe(Client *c, int wintype)
 		int cy = button_y + btn_size / 2;
 		int r = MAX(2, btn_size / 3);
 
-		XSetForeground(dpy, frame_gc, btnplusclr.pixel);
+		XSetForeground(dpy, frame_gc,
+			active ? btnplusclr.pixel : scheme[sidx][ColBg].pixel);
 		XFillRectangle(dpy, c->win, frame_gc, 0, button_y, btn_size, btn_size);
-		XSetForeground(dpy, frame_gc, btnfgclr.pixel);
+		XSetForeground(dpy, frame_gc,
+			active ? btnfgclr.pixel : scheme[sidx][ColFg].pixel);
 		XDrawArc(dpy, c->win, frame_gc, cx - r, cy - r,
 			2 * r, 2 * r, 0, 360 * 64);
 	}
@@ -3783,8 +3836,8 @@ drawframe(Client *c, int wintype)
 	XftTextExtentsUtf8(dpy, font, (const FcChar8 *)c->name, strlen(c->name), &ext);
 	text_h = (int)ext.height;
 
-	top = btn_size + 4;
-	bottom = (has_button ? button_y : c->h) - 4;
+	top = btn_size + titlebar_textpad;
+	bottom = (has_button ? button_y : c->h) - titlebar_textpad;
 	available = bottom - top;
 	if (available > 0 && text_h > 0) {
 		if (text_h > available)
@@ -3792,13 +3845,17 @@ drawframe(Client *c, int wintype)
 		else
 			pen_y = top + (available + text_h) / 2;
 
+		ty = MAX(top, pen_y - text_h - titlebar_textpad);
+		tb = MIN(bottom, pen_y + titlebar_textpad);
+		drawtitleplate(c, sidx, 0, ty, titlebar_width, tb - ty);
+
 		/* Rotated glyphs extend to the left of the baseline. */
 		pen_x = (titlebar_width - (int)ext.width) / 2 + (int)ext.x;
 
 		clip.x = 0;
-		clip.y = top;
+		clip.y = ty;
 		clip.width = titlebar_width;
-		clip.height = available;
+		clip.height = tb - ty;
 		XftDrawSetClipRectangles(xftdraw, 0, 0, &clip, 1);
 		XftDrawStringUtf8(xftdraw, xftcolor, font, pen_x, pen_y,
 			(const FcChar8 *)c->name, strlen(c->name));

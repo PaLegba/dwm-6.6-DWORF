@@ -31,7 +31,7 @@ Main additions:
 - Fullscreen windows cover the whole monitor without a residual titlebar.
 - Optional extra status bar on the primary monitor (`dualstatus`).
 - `zoomswap` behavior for `zoom`.
-- Urgent border color and configurable titlebar button colors.
+- Urgent border color, active/inactive titlebar button colors, and a classic sparse-dot titlebar pattern.
 - Additional layouts from external snippets: `bstack`, `grid`, `gaplessgrid`, `tcl`, `fibonacci` (`spiral` and `dwindle`).
 - Stack reordering helpers (`pushup`, `pushdown`) and drag-reorder helper (`tilemovemouse`).
 
@@ -184,6 +184,13 @@ Each normal managed frame has a vertical titlebar on the left:
 - during `setup()` the width is expanded to `MAX(titlebar_width, bh)` so it matches the configured font/bar height; this avoids shrinking the rotated font on high-DPI displays
 - currently only left side is supported (`titlebar_side = 0`; right side is not implemented)
 - title is drawn vertically with a rotated Xft font
+- the titlebar background can use a small classic sparse-dot pattern selected
+  by `titlebar_pattern` in `config.h` (`0` solid, `1` sparse dots); the dot
+  lattice is rotation-neutral, so vertical and horizontal titlebars look the
+  same, and it uses the current scheme foreground over its background
+- the title text is drawn on a solid background plate with
+  `titlebar_textpad` pixels of empty space around it, so the pattern does not
+  run through the text
 - close button at the top
 - `-` and `+` buttons at the bottom when the frame is tall enough
 
@@ -230,6 +237,10 @@ Button colors are configurable in `config.h` / `config.def.h`:
 - `titlebarclosecolor`
 - `titlebarpluscolor` (the `[o]` control)
 - `titlebarbtnfgcolor`
+
+The focused window uses those button colors. Unfocused and shaded windows use
+the inactive titlebar background/foreground (`SchemeNorm`) for the same
+buttons, so active and inactive frames read differently at a glance.
 
 ### 3.3 Double-click shading
 
@@ -312,7 +323,9 @@ Supported in:
 - `grid` / `gaplessgrid`: column and row sizes are weighted by the average
   `cfact` of their cells; `mfact` biases the first column (`0.5` = equal)
 - `tcl`: the two side columns distribute their heights proportionally to
-  `cfact`; `mfact` controls the centered master width
+  `cfact`; `mfact` controls the centered master width. All x positions are
+  root-relative and include `m->wx`, so the layout stays inside secondary
+  monitors: left `m->wx`, master `m->wx + sw`, right `m->wx + mw + sw`.
 
 Key bindings in `config.h`:
 
@@ -361,7 +374,8 @@ Other layouts and floating windows are unchanged.
 ### 4.5 Floating placement and bounds
 
 - New floating windows are centered in the monitor's usable window area.
-- Floating windows are clamped to the monitor/window-area bounds both at manage time and on later resize requests.
+- Floating windows are clamped to the monitor/window-area bounds for non-interactive placement and layout restores.
+- Interactive move/resize is not clamped, so a floating window can be dragged or resized across monitor edges. On button release, `sendmon()` moves it to the target monitor and normal clamping applies there.
 - This prevents clients such as GIMP from creating initial windows larger than the assigned screen.
 - Centering is re-applied after the layout/size-hint pass so that size-hint rounding does not leave the window off-center.
 
@@ -431,7 +445,11 @@ Shaded titlebars use the normal (inactive) titlebar colors:
 
 - background: `SchemeNorm` background
 - text: `SchemeNorm` foreground
-- selected shaded windows keep their selected border behavior; only the bar background/text follow the normal titlebar scheme.
+- the optional sparse-dot pattern is drawn in the background; the text sits on
+  a solid `SchemeNorm` plate with `titlebar_textpad` spacing
+- titlebar buttons also use the inactive `SchemeNorm` colors
+- selected shaded windows keep their selected border behavior; only the bar
+  background/text/buttons follow the normal titlebar scheme.
 
 For windows on inactive monitors:
 
@@ -441,7 +459,7 @@ For windows on inactive monitors:
 
 Urgent border color is configured by `urgbordercolor`.
 
-Titlebar button colors are configured by the four `titlebar*color` variables listed above.
+Titlebar button colors are configured by the three `titlebar*color` variables listed above.
 
 Known unused color variables:
 
@@ -584,7 +602,7 @@ These are the main bugs that were fixed compared with the earlier in-work state.
 - Added master promotion when a master is shaded in `tile`/`bstack`.
 - Added gaps to the supported layouts without breaking bottom/right alignment.
 - Added `attachtop` (replacing `attachabove`) and `zoomswap`.
-- Added always-center floating placement and monitor-bound clamping for floating clients.
+- Added always-center floating placement, monitor-bound clamping at rest, and cross-monitor dragging via `sendmon()`.
 - Added per-tag layouts, master count, `mfact`, and bar visibility.
 
 ### Urgent border

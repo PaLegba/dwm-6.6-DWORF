@@ -16,6 +16,7 @@ DWORF is designed to be used as a primary desktop environment, not only as a dem
 - **Left vertical titlebars** — thin side titlebars with vertically rendered text.
 - **Mouse-aware tiling** — drag the titlebar to reorder tiled windows; drag a floating window freely.
 - **Double-click shading** — collapse a window to a titlebar and restore it later.
+- **Classic titlebar styling** — optional sparse-dot pattern, solid text plate, and distinct active/inactive button colors.
 - **`cfact` / `mfact` control** — fine-grained per-window and master-area sizing.
 - **Runtime themes** — all st color schemes from the bundled reference are available with `-S`.
 - **Universal font** — dwm, dmenu, and the companion svkbd share the `monospace` family through Xft; Cyrillic labels work without core-font setup.
@@ -23,7 +24,7 @@ DWORF is designed to be used as a primary desktop environment, not only as a dem
 - **Per-window keyboard layout** — each window remembers its XKB group.
 - **Fullscreen without artifacts** — fullscreen clients cover the whole monitor and bypass the side titlebar.
 - **Dual status bars** — optional second status bar on the primary monitor.
-- **Gaps, urgently colored borders, monitor-bound floating windows**, and other usability improvements.
+- **Gaps, urgently colored borders, floating windows clamped to their monitor at rest but draggable across monitors**, and other usability improvements.
 - **Companion dmenu** in `tools/dmenu-5.4-mod` with themes, highlighting, mouse support, scrolling, separators, and non-blocking stdin.
 
 ---
@@ -147,7 +148,7 @@ The selected theme also colors:
 - normal, selected, and urgent borders;
 - the status bar;
 - vertical titlebars;
-- titlebar close and `[o]` buttons;
+- titlebar close and `[o]` buttons (focused; inactive buttons use the titlebar colors);
 - shaded titlebars;
 - floating border colors.
 
@@ -170,11 +171,13 @@ Each managed frame has a vertical titlebar on the left.
   - LMB drag changes `mfact` when the window is the only master, otherwise `cfact`; for a floating window it resizes the window.
   - Mouse wheel over `[o]` changes `cfact`, or `mfact` for a single-master window.
   - Drag axes are layout-aware: `mfact` uses horizontal movement in `tile` and vertical movement in `bstack`; `cfact` uses the opposite axis.
+- Buttons use the theme's button colors on the focused window and the inactive titlebar colors otherwise.
+- The titlebar background can use a classic sparse-dot pattern via `titlebar_pattern` in `config.h` (`0` solid, `1` sparse dots).
 
 ### Dragging
 
 - Drag the titlebar of a tiled window to reorder it on the tiling grid.
-- Drag the titlebar of a floating window to move it freely.
+- Drag the titlebar of a floating window to move it freely, including across monitors; releasing it over another monitor moves the window to that monitor.
 - Dragging only re-evaluates a new target tile when the pointer actually enters it; it does not redraw the whole layout on every motion event.
 
 ### Shading
@@ -328,6 +331,8 @@ Configuration is compile-time, in dwm tradition.
 - `themes.h` contains the runtime theme palettes.
 - `config.mk` controls build flags, install prefix, and Xinerama.
 - `maxnmaster` in `config.h` caps the master count (`Mod+i` / `Mod+d`); the default is 6.
+- `titlebar_pattern` in `config.h` selects the titlebar texture: `0` solid, `1` sparse dots.
+- `titlebar_textpad` in `config.h` sets the solid padding around the title text (default 4 px).
 - After editing configuration, rebuild with `make clean && make`.
 
 The authoritative documentation for behavior and internals is in `MODIFICATIONS.md`. The man page is `dwm.1`.
@@ -368,6 +373,7 @@ The companion dmenu and the reference st build can also be started on the same d
 - `config.h` — active build configuration
 - `themes.h` — runtime color themes
 - `lay.*.c` — additional layouts
+- `tests/` — Xephyr regression helpers (`smoke.sh`, `xdo.c`, `dialog.c`)
 - `push.c` — stack movement helpers
 - `tilemovemouse.c` — tiled drag/reorder logic
 - `nextprevlayout.c` — layout cycling
