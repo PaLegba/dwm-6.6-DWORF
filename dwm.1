@@ -20,8 +20,8 @@ from
 .IR config.h .
 In monocle layout all windows are
 maximised to the screen size. In floating layout windows can be resized and
-moved freely. Dialog and transient windows are frameless and managed floating,
-regardless of the layout applied.
+moved freely. Dialog and transient windows keep a border but have no titlebar,
+and are managed floating regardless of the layout applied.
 .P
 Windows are grouped by tags. Each window can be tagged with one or multiple
 tags. Selecting certain tags displays all windows with these tags.
@@ -201,6 +201,13 @@ Resize focused window while dragging. Tiled windows will be toggled to the float
 .SH CUSTOMIZATION
 dwm is customized by creating a custom config.h and (re)compiling the source
 code. This keeps it fast, secure and simple.
+.P
+The
+.I permonitorcatch
+option in
+.I config.h
+keeps windows adopted at startup on their current monitor instead of moving
+them all to the selected monitor. Set it to 0 for classic dwm behavior.
 .SH SEE ALSO
 .BR dmenu (1),
 .BR st (1)

@@ -325,6 +325,7 @@ static Atom wmatom[WMLast], netatom[NetLast];
 static Client *prevzoom = NULL;
 static const char *themename = NULL;
 static int running = 1;
+static int scanning = 0;
 static int sigpipe[2] = { -1, -1 };
 static Cur *cursor[CurLast];
 static Clr **scheme;
@@ -912,7 +913,7 @@ configure(Client *c)
                 ce.y = c->y;
                 ce.width = MAX(1, c->w);
                 ce.height = MAX(1, c->h);
-                ce.border_width = 0;
+                ce.border_width = c->bw;
                 ce.above = None;
                 ce.override_redirect = False;
                 XSendEvent(dpy, c->client, False, StructureNotifyMask, (XEvent *)&ce);
@@ -1136,7 +1137,7 @@ drawborder(Client *c, int focused)
 {
 	unsigned int s;
 
-	if (!c || !c->win || ISFRAMELESS(c))
+	if (!c || !c->win || ISDOCK(c))
 		return;
 	s = c->isurgent ? SchemeUrg : (focused ? SchemeSel : SchemeNorm);
 	XSetWindowBorder(dpy, c->win, scheme[s][ColBorder].pixel);
@@ -1547,9 +1548,11 @@ manage(Window w, XWindowAttributes *wa)
         Client *c, *t = NULL;
         Atom wtype;
         Window trans = None;
+        int preservepos;
 
         c = ecalloc(1, sizeof(Client));
         c->client = w;
+        preservepos = scanning && permonitorcatch;
         wtype = getatomprop(c, netatom[NetWMWindowType]);
         c->isdock = (wtype == netatom[NetWMWindowTypeDock]);
         c->istoolbar = (wtype == netatom[NetWMWindowTypeToolbar]);
@@ -1568,7 +1571,9 @@ manage(Window w, XWindowAttributes *wa)
                 c->mon = t->mon;
                 c->tags = t->tags;
         } else {
-                c->mon = selmon;
+                c->mon = (scanning && permonitorcatch)
+                        ? recttomon(wa->x, wa->y, wa->width, wa->height)
+                        : selmon;
                 applyrules(c);
         }
         c->ismodal = !ISDOCK(c) &&
@@ -1607,9 +1612,8 @@ manage(Window w, XWindowAttributes *wa)
          * have no titlebar close button that could kill the whole app */
         if (c->ismodal) {
                 c->isfloating = c->oldstate = 1;
-                c->bw = 0;
                 c->win = c->client;
-                XSetWindowBorderWidth(dpy, c->client, 0);
+                XSetWindowBorderWidth(dpy, c->client, c->bw);
                 XSelectInput(dpy, c->client, EnterWindowMask | FocusChangeMask |
                              PropertyChangeMask | StructureNotifyMask);
                 updatewindowtype(c);
@@ -1673,8 +1677,10 @@ manage(Window w, XWindowAttributes *wa)
         && (c->isfloating || !c->mon->lt[c->mon->sellt]->arrange)) {
                 c->w = MAX(1, MIN(c->w, c->mon->ww - 2 * c->bw));
                 c->h = MAX(1, MIN(c->h, c->mon->wh - 2 * c->bw));
-                c->x = c->mon->wx + (c->mon->ww - WIDTH(c)) / 2;
-                c->y = c->mon->wy + (c->mon->wh - HEIGHT(c)) / 2;
+                if (!preservepos) {
+                        c->x = c->mon->wx + (c->mon->ww - WIDTH(c)) / 2;
+                        c->y = c->mon->wy + (c->mon->wh - HEIGHT(c)) / 2;
+                }
                 XMoveWindow(dpy, c->win, c->x, c->y);
         }
         if (c->isfloating)
@@ -1698,7 +1704,7 @@ manage(Window w, XWindowAttributes *wa)
                 c->kbdgrp = kbd_state.group;
         }
         arrange(c->mon);
-        if (!c->isfullscreen
+        if (!c->isfullscreen && !preservepos
         && (c->isfloating || !c->mon->lt[c->mon->sellt]->arrange)) {
                 c->x = c->mon->wx + (c->mon->ww - WIDTH(c)) / 2;
                 c->y = c->mon->wy + (c->mon->wh - HEIGHT(c)) / 2;
@@ -2279,6 +2285,7 @@ scan(void)
         if (!XQueryTree(dpy, root, &d1, &d2, &wins, &num))
                 return;
 
+        scanning = permonitorcatch;
         for (i = 0; i < num; i++) {
                 if (!XGetWindowAttributes(dpy, wins[i], &wa) || wa.override_redirect)
                         continue;
@@ -2302,7 +2309,13 @@ scan(void)
                         manage(wins[i], &wa);
         }
 
+        scanning = 0;
         XFree(wins);
+        if (permonitorcatch) {
+                selmon = wintomon(root);
+                focus(NULL);
+                arrange(NULL);
+        }
 }
 
 

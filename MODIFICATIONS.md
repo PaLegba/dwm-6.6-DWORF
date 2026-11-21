@@ -90,7 +90,8 @@ This specifically matters for video players such as mplayer/Xv that resize their
 While managed:
 
 - The **frame** owns the visible border (`c->win`, border width `c->bw`).
-- The **client** has border width `0`.
+- The **client** has border width `0`, except for border-only modals where
+  `c->win == c->client` and the client itself keeps `borderpx`.
 - The original client border width is stored in `c->oldbw` and restored on unmanage.
 
 This is why layout code passes coordinates and sizes as frame geometry, and why `WIDTH(c)` / `HEIGHT(c)` include the frame border.
@@ -170,7 +171,7 @@ On cleanup, every client is unmanaged, reparented to root, mapped, and its save-
 
 `UnmapNotify` handling releases the frame for both real and synthetic unmap events once the real client is actually unmapped. This matters for modal/dialog windows that hide or withdraw themselves instead of being destroyed. On release, the client is mapped back to root only if it was viewable before release or is still shaded; withdrawn/hidden clients stay unmapped at root. This avoids orphan grey frames left behind after modal windows close.
 
-Transient and `_NET_WM_WINDOW_TYPE_DIALOG` clients are frameless: `manage()` sets `ismodal`, keeps `c->win == c->client`, skips reparenting/save-set, and never creates a titlebar close button. They stay floating and keep their requested geometry (clamped to the monitor). `unmanage()` restores their original border instead of reparenting or destroying the client. This fixes closing a modal through dwm killing the whole application through `XKillClient` on the shared client connection.
+Transient and `_NET_WM_WINDOW_TYPE_DIALOG` clients are border-only: `manage()` sets `ismodal`, keeps `c->win == c->client`, skips reparenting/save-set, and never creates a titlebar close button. They keep the normal `borderpx` client border, which `drawborder()` colors like any other frame, but no titlebar is drawn. They stay floating and keep their requested geometry (clamped to the monitor). `unmanage()` restores their original border instead of reparenting or destroying the client. This fixes closing a modal through dwm killing the whole application through `XKillClient` on the shared client connection.
 
 ---
 
@@ -416,6 +417,25 @@ Each client remembers its XKB keyboard group in `kbdgrp`.
 This gives per-window keyboard layout switching without additional client cooperation.
 
 The `pwkl` mouse/tag part is already covered by the existing `CLEANMASK`: it keeps only real modifier bits, so buttons and modifier state do not block tag-bar mouse actions while alternate layouts are active.
+
+### 4.9 Startup adoption / per-monitor catch
+
+`scan()` sets a temporary `scanning` flag while adopting existing windows and
+`manage()` uses it only for that pass:
+
+- `permonitorcatch = 1` in `config.h` (default): a non-transient window is
+  assigned to `recttomon(wa->x, wa->y, wa->width, wa->height)` — the monitor
+  with the largest overlap with its current geometry. Transient windows stay
+  with their parent; explicit rules with `monitor = ...` still win because
+  `applyrules()` runs after the geometric choice.
+- `permonitorcatch = 0`: classic dwm behavior, every adopted window starts on
+  the currently selected monitor.
+- Adopted floating windows keep their current position inside the chosen
+  monitor instead of being recentered.
+- After the scan, `selmon` is restored to the monitor under the pointer and
+  `arrange(NULL)` performs one final layout pass.
+- Tag membership is not recovered: adopted windows use the current tag of the
+  monitor they land on.
 
 ---
 

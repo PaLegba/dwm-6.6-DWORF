@@ -13,6 +13,8 @@ static const unsigned int snap      = 32;       /* snap pixel */
 static const int showbar            = 1;        /* 0 means no bar */
 static const int topbar             = 1;        /* 0 means bottom bar */
 static const int extrabar           = 1;        /* 0 means no extra status bar */
+/* 1 = keep adopted windows on their current monitor; 0 = classic dwm */
+static const int permonitorcatch    = 1;
 static const char *fonts[]          = { "monospace:size=10" };
 static const char dmenufont[]       = "monospace:size=10";
 /* cfact/mfact drag and wheel sensitivity */

@@ -20,6 +20,7 @@ DWORF is designed to be used as a primary desktop environment, not only as a dem
 - **`cfact` / `mfact` control** — fine-grained per-window and master-area sizing.
 - **Runtime themes** — all st color schemes from the bundled reference are available with `-S`.
 - **Universal font** — dwm, dmenu, and the companion svkbd share the `monospace` family through Xft; Cyrillic labels work without core-font setup.
+- **Per-monitor startup adoption** — windows adopted from a previous session stay on their current monitor by default (`permonitorcatch`).
 - **Per-tag layouts** — layout, master count, `mfact`, and bar visibility are stored per tag.
 - **Per-window keyboard layout** — each window remembers its XKB group.
 - **Fullscreen without artifacts** — fullscreen clients cover the whole monitor and bypass the side titlebar.
@@ -191,7 +192,7 @@ Each managed frame has a vertical titlebar on the left.
 
 ### Dialogs
 
-Transient and `_NET_WM_WINDOW_TYPE_DIALOG` windows are frameless: they keep their own geometry, are not reparented, and have no titlebar close button. Closing a dialog therefore cannot kill its parent application through dwm.
+Transient and `_NET_WM_WINDOW_TYPE_DIALOG` windows are border-only: they keep their own geometry, are not reparented, get a normal `borderpx` border, and have no titlebar close button. Closing a dialog therefore cannot kill its parent application through dwm.
 
 ### Fullscreen
 
@@ -331,6 +332,7 @@ Configuration is compile-time, in dwm tradition.
 - `themes.h` contains the runtime theme palettes.
 - `config.mk` controls build flags, install prefix, and Xinerama.
 - `maxnmaster` in `config.h` caps the master count (`Mod+i` / `Mod+d`); the default is 6.
+- `permonitorcatch` in `config.h` keeps adopted windows on their current monitor during the startup scan; set it to `0` for classic dwm behavior.
 - `titlebar_pattern` in `config.h` selects the titlebar texture: `0` solid, `1` sparse dots.
 - `titlebar_textpad` in `config.h` sets the solid padding around the title text (default 4 px).
 - After editing configuration, rebuild with `make clean && make`.
