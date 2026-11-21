@@ -1,8 +1,0 @@
-# build artifacts
-*.o
-dwm-6.6
-
-# dwslit tools
-tools/dwslit/dwslit
-tools/dwslit/wmapps/bin/
-tools/dwslit/wmapps/wmglobe/wmglobe
